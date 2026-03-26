@@ -1,0 +1,10 @@
+fastapi[all]
+uvicorn[standard]
+torch
+transformers
+librosa
+soundfile
+numpy
+python-multipart
+websockets
+pydantic
