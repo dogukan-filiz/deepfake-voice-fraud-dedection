@@ -249,5 +249,100 @@ async def health_check():
     return payload
 
 
+from pathlib import Path as _Path
+
+def _test_audio_root() -> _Path:
+    return _Path(__file__).resolve().parents[1] / "test_audio"
+
+
+@app.get("/test-library")
+async def list_test_library():
+    """List available test audio files grouped by category."""
+    root = _test_audio_root()
+    result = {}
+    for category in ("real", "fake"):
+        d = root / category
+        if d.is_dir():
+            files = sorted(
+                f.name for f in d.iterdir()
+                if f.is_file() and f.suffix.lower() in {".wav", ".flac", ".mp3", ".ogg"}
+            )
+            result[category] = files
+        else:
+            result[category] = []
+    return result
+
+
+@app.post("/analyze-test", response_model=PredictionResult)
+async def analyze_test_file(category: str, filename: str):
+    """Analyze a file from the test library."""
+    if category not in ("real", "fake"):
+        raise HTTPException(status_code=400, detail="Category must be 'real' or 'fake'")
+
+    safe_name = _Path(filename).name
+    filepath = _test_audio_root() / category / safe_name
+    if not filepath.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {category}/{safe_name}")
+
+    raw_bytes = filepath.read_bytes()
+
+    try:
+        features = extract_features(raw_bytes, use_ffmpeg=False)
+    except ValueError:
+        try:
+            features = extract_features(raw_bytes, use_ffmpeg=True)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        validate_audio_requirements(
+            features["waveform"],
+            int(features["sr"]),
+            min_duration_sec=float(settings.AUDIO_MIN_DURATION_SEC),
+            min_peak_abs=float(settings.AUDIO_MIN_PEAK_ABS),
+            min_rms=float(settings.AUDIO_MIN_RMS),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    model = get_model()
+    model_out = model.predict(features)
+
+    p_real = model_out["p_real"]
+    p_fake = model_out["p_fake"]
+    spectral_resid = model_out["spectral_residual"]
+    num_chunks = int(model_out.get("num_chunks", 0))
+    max_chunk_p_fake = model_out.get("max_chunk_p_fake", p_fake)
+
+    authenticity_score = float(p_real)
+    is_suspected_fraud = authenticity_score < THRESHOLD
+    risk = calculate_risk_level(authenticity_score)
+
+    call_id = f"test-{category}-{safe_name}-{datetime.now(timezone.utc).timestamp()}"
+    now = datetime.now(timezone.utc)
+
+    record = CallRecord(
+        call_id=call_id,
+        authenticity_score=authenticity_score,
+        is_suspected_fraud=is_suspected_fraud,
+        risk_level=risk,
+        timestamp=now,
+    )
+    _CALL_LOG.append(record)
+
+    return PredictionResult(
+        call_id=call_id,
+        authenticity_score=authenticity_score,
+        is_suspected_fraud=is_suspected_fraud,
+        risk_level=risk,
+        p_real=p_real,
+        p_fake=p_fake,
+        spectral_residual=spectral_resid,
+        num_chunks=num_chunks,
+        max_chunk_p_fake=max_chunk_p_fake,
+        timestamp=now,
+    )
+
+
 if __name__ == "__main__":
     uvicorn.run(_UVICORN_APP_PATH, host="0.0.0.0", port=8000, reload=True)

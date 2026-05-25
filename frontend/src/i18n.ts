@@ -56,6 +56,9 @@ const translations = {
       chunksWorst: 'Chunks / Worst',
       suspectedDeepfake: 'Suspected Deepfake',
       appearsGenuine: 'Appears Genuine',
+      verdictBannerFraud: 'This voice shows signs of synthetic generation',
+      verdictBannerGenuine: 'No synthetic artifacts detected in this voice',
+      confidence: 'Confidence',
     },
     risk: {
       low: 'Clean',
@@ -65,6 +68,14 @@ const translations = {
     },
     system: {
       backendStatus: (s: string) => `Backend ${s}`,
+    },
+    testLibrary: {
+      title: 'Test Library',
+      openBtn: 'Test Library',
+      real: 'Real Voices',
+      fake: 'Fake / Synthetic',
+      empty: 'No test files found. Add WAV files to test_audio/real/ and test_audio/fake/',
+      analyzing: 'Analyzing...',
     },
     errors: {
       emptyRecording: 'Recording came back empty. Check your microphone permissions.',
@@ -130,6 +141,9 @@ const translations = {
       chunksWorst: 'Parça / En Kötü',
       suspectedDeepfake: 'Muhtemel Deepfake',
       appearsGenuine: 'Gerçek Ses',
+      verdictBannerFraud: 'Bu ses kaydında yapay üretim belirtileri tespit edildi',
+      verdictBannerGenuine: 'Bu ses kaydında yapay üretim belirtisi bulunamadı',
+      confidence: 'Güven',
     },
     risk: {
       low: 'Temiz',
@@ -139,6 +153,14 @@ const translations = {
     },
     system: {
       backendStatus: (s: string) => `Sunucu ${s}`,
+    },
+    testLibrary: {
+      title: 'Test Kütüphanesi',
+      openBtn: 'Test Kütüphanesi',
+      real: 'Gerçek Sesler',
+      fake: 'Sahte / Sentetik',
+      empty: 'Test dosyası bulunamadı. test_audio/real/ ve test_audio/fake/ klasörlerine WAV dosyası ekleyin.',
+      analyzing: 'Analiz ediliyor...',
     },
     errors: {
       emptyRecording: 'Kayıt boş geldi. Mikrofon izinlerinizi kontrol edin.',

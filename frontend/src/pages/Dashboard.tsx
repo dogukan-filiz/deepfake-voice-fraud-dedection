@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
 import {
-  BarChart3, ChevronDown, Check, X, AlertTriangle, HelpCircle,
+  BarChart3, Check, X, AlertTriangle, HelpCircle,
   Upload, Calendar, Mic, Square, ShieldCheck, ShieldAlert, ShieldX, Globe,
+  FlaskConical, FileAudio, Loader2,
 } from 'lucide-react';
 import { type Locale, type Translations, getTranslations, detectLocale, persistLocale } from '../i18n';
 
@@ -225,6 +226,41 @@ export const Dashboard: React.FC = () => {
 
   const riskLabel = (level: RiskLevel) => t.risk[level];
 
+  // Test Library modal
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryFiles, setLibraryFiles] = useState<{ real: string[]; fake: string[] }>({ real: [], fake: [] });
+  const [libraryLoading, setLibraryLoading] = useState<string | null>(null);
+
+  const openLibrary = async () => {
+    setShowLibrary(true);
+    try {
+      const res = await api.get<{ real: string[]; fake: string[] }>('/test-library');
+      setLibraryFiles(res.data);
+    } catch {
+      setLibraryFiles({ real: [], fake: [] });
+    }
+  };
+
+  const analyzeTestFile = async (category: 'real' | 'fake', filename: string) => {
+    const key = `${category}/${filename}`;
+    setLibraryLoading(key);
+    try {
+      const res = await api.post<PredictionResult>(`/analyze-test?category=${category}&filename=${encodeURIComponent(filename)}`);
+      setResult(res.data);
+      setError(null);
+      await fetchCalls();
+      setShowLibrary(false);
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setError(e.response?.data?.detail ?? t.errors.generic);
+      } else {
+        setError(t.errors.generic);
+      }
+    } finally {
+      setLibraryLoading(null);
+    }
+  };
+
   return (
     <div className="app-shell">
       {/* Navbar */}
@@ -234,6 +270,10 @@ export const Dashboard: React.FC = () => {
           <span className="brand-name">{t.brand}</span>
         </div>
         <div className="nav-right">
+          <button className="lang-toggle" onClick={openLibrary}>
+            <FlaskConical size={14} />
+            {t.testLibrary.openBtn}
+          </button>
           <button className="lang-toggle" onClick={toggleLocale}>
             <Globe size={14} />
             {t.nav.langSwitch}
@@ -243,132 +283,148 @@ export const Dashboard: React.FC = () => {
 
       {/* Dashboard */}
       <div className="dashboard">
-        <div className="main-col">
-          {/* Score Tracker */}
-          <section className="card card-hero">
-            <div className="card-header">
-              <div className="card-title-group">
-                <div className="card-icon"><BarChart3 size={20} /></div>
-                <div>
-                  <h2>{t.tracker.title}</h2>
-                  <p className="card-subtitle">{t.tracker.subtitle}</p>
-                </div>
+        {/* Verdict Banner - visible immediately after analysis */}
+        {result && (
+          <section className={`verdict-banner ${result.is_suspected_fraud ? 'fraud' : 'genuine'}`}>
+            <div className="verdict-icon">
+              {result.is_suspected_fraud ? <ShieldX size={36} /> : <ShieldCheck size={36} />}
+            </div>
+            <div className="verdict-content">
+              <div className="verdict-title">
+                {result.is_suspected_fraud ? t.result.suspectedDeepfake : t.result.appearsGenuine}
               </div>
-              <div className="dropdown-select">
-                <span>{t.tracker.session}</span>
-                <ChevronDown size={14} />
+              <div className="verdict-subtitle">
+                {result.is_suspected_fraud ? t.result.verdictBannerFraud : t.result.verdictBannerGenuine}
               </div>
             </div>
-            <div className="hero-chart-area">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.6} />
-                    <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 8, fontSize: 13, color: '#fff' }} labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }} itemStyle={{ color: '#fff' }} />
-                    <Line type="monotone" dataKey="score" stroke="#6b7fb8" strokeWidth={2.5} dot={{ r: 4, fill: '#6b7fb8', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} name="Score" />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="empty-chart">{t.tracker.emptyChart}</div>
-              )}
+            <div className="verdict-score">
+              <div className="verdict-score-value">{(result.authenticity_score * 100).toFixed(0)}%</div>
+              <div className="verdict-score-label">{t.result.authenticity}</div>
             </div>
-            <div className="hero-stats">
-              <div>
-                <div className={`hero-stat-change ${flaggedCalls > 0 ? 'negative' : 'positive'}`}>
-                  {flaggedCalls > 0 ? flaggedCalls : totalCalls > 0 ? <ShieldCheck size={28} /> : '0'}
-                </div>
-                <div className="hero-stat-label">
-                  {flaggedCalls > 0 ? t.tracker.flagged(flaggedCalls) : totalCalls > 0 ? t.tracker.allClean : t.tracker.waiting}
-                </div>
-              </div>
+            <div className="verdict-score">
+              <div className={`verdict-score-value verdict-risk-color ${result.risk_level}`}>{riskLabel(result.risk_level)}</div>
+              <div className="verdict-score-label">{t.result.riskLevel}</div>
             </div>
           </section>
+        )}
 
-          {/* Action Cards */}
-          <div className="cards-row">
-            {/* Live Recording */}
-            <section className="card card-action">
-              <h3>{t.recording.title}</h3>
-              <p className="card-action-desc">{t.recording.desc}</p>
-              <div className="recording-controls">
-                {recordingState === 'recording' ? (
-                  <button className="btn btn-danger" onClick={stopRecording}><Square size={14} /> {t.recording.stop}</button>
-                ) : (
-                  <button className="btn btn-primary" onClick={startRecording} disabled={recordingState === 'processing'}>
-                    <Mic size={14} /> {recordingState === 'processing' ? t.recording.processing : t.recording.start}
-                  </button>
-                )}
-                <div className="recording-status">
-                  <div className={`status-dot ${recordingState}`} />
-                  <span>
-                    {recordingState === 'idle' && t.recording.ready}
-                    {recordingState === 'recording' && t.recording.recordingStatus}
-                    {recordingState === 'processing' && t.recording.analyzing}
-                  </span>
-                </div>
+        {/* Score Tracker */}
+        <section className="card card-hero">
+          <div className="card-header">
+            <div className="card-title-group">
+              <div className="card-icon"><BarChart3 size={20} /></div>
+              <div>
+                <h2>{t.tracker.title}</h2>
+                <p className="card-subtitle">{t.tracker.subtitle}</p>
               </div>
-              {health && (
-                <div className="system-info">
-                  <span className="system-tag">
-                    <span style={{ color: health.status === 'ok' ? '#22c55e' : '#ef4444' }}>{'●'}</span>
-                    {t.system.backendStatus(health.status)}
-                  </span>
-                </div>
-              )}
-            </section>
-
-            {/* Upload */}
-            <section className="card card-action">
-              <h3>{t.upload.title}</h3>
-              <p className="card-action-desc">{t.upload.desc}</p>
-              <div className="upload-zone">
-                <input type="file" accept="audio/*" onChange={handleFileChange} />
-                <div className="upload-icon"><Upload size={24} color="#94a3b8" /></div>
-                <div className="upload-text">{t.upload.selectFile}</div>
-              </div>
-              {selectedFile && <div className="upload-filename">{selectedFile.name}</div>}
-              <button className="btn btn-primary" onClick={handleUpload} disabled={!selectedFile || loading} style={{ marginTop: '0.75rem', width: '100%' }}>
-                {loading ? t.upload.analyzeLoading : t.upload.analyze}
-              </button>
-            </section>
-
-            {/* Detection Summary */}
-            <section className="card">
-              <div className="card-header">
-                <h3>{t.summary.title}</h3>
-                <span className="stat-date"><Calendar size={13} /> {t.summary.thisSession}</span>
-              </div>
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <span className="stat-label">{t.summary.totalScanned}</span>
-                  <span className="stat-value">{totalCalls}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">{t.summary.flagged}</span>
-                  <span className="stat-value flagged">{flaggedCalls}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">{t.summary.clean}</span>
-                  <span className="stat-value clean">{cleanCalls}</span>
-                </div>
-              </div>
-              {miniBars.length > 0 && (
-                <div className="mini-bars">
-                  {miniBars.map(b => (
-                    <div key={b.id} className={`mini-bar ${b.level === 'low' || b.level === 'medium' ? 'safe' : 'danger'}`} style={{ height: `${Math.max(4, b.score * 30)}px` }} />
-                  ))}
-                </div>
-              )}
-            </section>
+            </div>
+            <span className="session-label">{t.tracker.session}</span>
           </div>
+          <div className="hero-chart-area">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.6} />
+                  <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 8, fontSize: 13, color: '#fff' }} labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }} itemStyle={{ color: '#fff' }} />
+                  <Line type="monotone" dataKey="score" stroke="#6b7fb8" strokeWidth={2.5} dot={{ r: 4, fill: '#6b7fb8', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} name="Score" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-chart">{t.tracker.emptyChart}</div>
+            )}
+          </div>
+          <div className="hero-stats">
+            <div>
+              <div className={`hero-stat-change ${flaggedCalls > 0 ? 'negative' : 'positive'}`}>
+                {flaggedCalls > 0 ? flaggedCalls : totalCalls > 0 ? <ShieldCheck size={28} /> : '0'}
+              </div>
+              <div className="hero-stat-label">
+                {flaggedCalls > 0 ? t.tracker.flagged(flaggedCalls) : totalCalls > 0 ? t.tracker.allClean : t.tracker.waiting}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Action Cards Row */}
+        <div className="cards-row">
+          <section className="card card-action">
+            <h3>{t.recording.title}</h3>
+            <p className="card-action-desc">{t.recording.desc}</p>
+            <div className="recording-controls">
+              {recordingState === 'recording' ? (
+                <button className="btn btn-danger" onClick={stopRecording}><Square size={14} /> {t.recording.stop}</button>
+              ) : (
+                <button className="btn btn-primary" onClick={startRecording} disabled={recordingState === 'processing'}>
+                  <Mic size={14} /> {recordingState === 'processing' ? t.recording.processing : t.recording.start}
+                </button>
+              )}
+              <div className="recording-status">
+                <div className={`status-dot ${recordingState}`} />
+                <span>
+                  {recordingState === 'idle' && t.recording.ready}
+                  {recordingState === 'recording' && t.recording.recordingStatus}
+                  {recordingState === 'processing' && t.recording.analyzing}
+                </span>
+              </div>
+            </div>
+            {health && (
+              <div className="system-info">
+                <span className="system-tag">
+                  <span style={{ color: health.status === 'ok' ? '#22c55e' : '#ef4444' }}>{'●'}</span>
+                  {t.system.backendStatus(health.status)}
+                </span>
+              </div>
+            )}
+          </section>
+
+          <section className="card card-action">
+            <h3>{t.upload.title}</h3>
+            <p className="card-action-desc">{t.upload.desc}</p>
+            <div className="upload-zone">
+              <input type="file" accept="audio/*" onChange={handleFileChange} />
+              <div className="upload-icon"><Upload size={24} color="#94a3b8" /></div>
+              <div className="upload-text">{t.upload.selectFile}</div>
+            </div>
+            {selectedFile && <div className="upload-filename">{selectedFile.name}</div>}
+            <button className="btn btn-primary" onClick={handleUpload} disabled={!selectedFile || loading} style={{ marginTop: '0.75rem', width: '100%' }}>
+              {loading ? t.upload.analyzeLoading : t.upload.analyze}
+            </button>
+          </section>
+
+          <section className="card">
+            <div className="card-header">
+              <h3>{t.summary.title}</h3>
+              <span className="stat-date"><Calendar size={13} /> {t.summary.thisSession}</span>
+            </div>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-label">{t.summary.totalScanned}</span>
+                <span className="stat-value">{totalCalls}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">{t.summary.flagged}</span>
+                <span className="stat-value flagged">{flaggedCalls}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">{t.summary.clean}</span>
+                <span className="stat-value clean">{cleanCalls}</span>
+              </div>
+            </div>
+            {miniBars.length > 0 && (
+              <div className="mini-bars">
+                {miniBars.map(b => (
+                  <div key={b.id} className={`mini-bar ${b.level === 'low' || b.level === 'medium' ? 'safe' : 'danger'}`} style={{ height: `${Math.max(4, b.score * 30)}px` }} />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
-        {/* Sidebar */}
-        <div className="side-col">
-          {/* Recent Analyses */}
-          <section className="card">
+        {/* Bottom Row: Recent Analyses + Latest Result side by side */}
+        <div className="bottom-row">
+          <section className="card card-recent">
             <div className="card-header">
               <h3>{t.recent.title}</h3>
               {calls.length > 6 && (
@@ -400,7 +456,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </section>
 
-          {/* Latest Result */}
           {result && (
             <section className="card card-result">
               <div className="card-header">
@@ -423,6 +478,64 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Test Library Modal */}
+      {showLibrary && (
+        <div className="modal-overlay" onClick={() => setShowLibrary(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t.testLibrary.title}</h2>
+              <button className="modal-close" onClick={() => setShowLibrary(false)}><X size={18} /></button>
+            </div>
+            <div className="modal-body">
+              {libraryFiles.real.length === 0 && libraryFiles.fake.length === 0 ? (
+                <div className="empty-list">{t.testLibrary.empty}</div>
+              ) : (
+                <div className="library-grid">
+                  <div className="library-col">
+                    <h3 className="library-col-title genuine-text">
+                      <ShieldCheck size={16} /> {t.testLibrary.real} ({libraryFiles.real.length})
+                    </h3>
+                    <div className="library-files">
+                      {libraryFiles.real.map(f => (
+                        <button
+                          key={f}
+                          className="library-file"
+                          disabled={libraryLoading !== null}
+                          onClick={() => analyzeTestFile('real', f)}
+                        >
+                          <FileAudio size={14} />
+                          <span className="library-file-name">{f}</span>
+                          {libraryLoading === `real/${f}` && <Loader2 size={14} className="spin" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="library-col">
+                    <h3 className="library-col-title fraud-text">
+                      <ShieldX size={16} /> {t.testLibrary.fake} ({libraryFiles.fake.length})
+                    </h3>
+                    <div className="library-files">
+                      {libraryFiles.fake.map(f => (
+                        <button
+                          key={f}
+                          className="library-file"
+                          disabled={libraryLoading !== null}
+                          onClick={() => analyzeTestFile('fake', f)}
+                        >
+                          <FileAudio size={14} />
+                          <span className="library-file-name">{f}</span>
+                          {libraryLoading === `fake/${f}` && <Loader2 size={14} className="spin" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="error-toast" onClick={() => setError(null)}>

@@ -92,11 +92,11 @@ body {
   color: var(--text-primary);
 }
 
-/* ---- Dashboard Grid: centered ---- */
+/* ---- Dashboard: single column, centered ---- */
 
 .dashboard {
-  display: grid;
-  grid-template-columns: 1fr 380px;
+  display: flex;
+  flex-direction: column;
   gap: 1.25rem;
   padding: 0 2.5rem 2.5rem;
   max-width: 1440px;
@@ -163,18 +163,94 @@ body {
   max-width: 420px;
 }
 
-.dropdown-select {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+.session-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  cursor: default;
-  white-space: nowrap;
-  font-weight: 500;
+}
+
+/* ---- Verdict Banner ---- */
+
+.verdict-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 2rem;
+  border-radius: var(--card-radius);
+  animation: bannerIn 0.4s ease-out;
+}
+
+.verdict-banner.genuine {
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.verdict-banner.fraud {
+  background: linear-gradient(135deg, #fecaca 0%, #fef2f2 100%);
+  border: 1px solid #fca5a5;
+  animation: bannerIn 0.4s ease-out, bannerPulse 2s ease-in-out 0.4s 3;
+}
+
+.verdict-icon { flex-shrink: 0; }
+.verdict-banner.genuine .verdict-icon { color: #16a34a; }
+.verdict-banner.fraud .verdict-icon { color: #dc2626; }
+
+.verdict-content { flex: 1; min-width: 0; }
+
+.verdict-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 0.2rem;
+}
+
+.verdict-banner.genuine .verdict-title { color: #15803d; }
+.verdict-banner.fraud .verdict-title { color: #b91c1c; }
+
+.verdict-subtitle { font-size: 0.85rem; color: var(--text-secondary); }
+
+.verdict-score {
+  text-align: center;
+  flex-shrink: 0;
+  padding: 0 1rem;
+  border-left: 1px solid rgba(0,0,0,0.08);
+}
+
+.verdict-score-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.verdict-banner.genuine .verdict-score-value { color: #15803d; }
+.verdict-banner.fraud .verdict-score-value { color: #b91c1c; }
+
+.verdict-risk-color.low { color: var(--accent-green) !important; }
+.verdict-risk-color.medium { color: var(--accent-yellow) !important; }
+.verdict-risk-color.high { color: var(--accent-orange) !important; }
+.verdict-risk-color.critical { color: var(--accent-red) !important; }
+
+.verdict-score-label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes bannerIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bannerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.15); }
 }
 
 /* ---- Hero Card ---- */
@@ -324,9 +400,18 @@ body {
 .mini-bar.warning { background: var(--accent-orange); }
 .mini-bar.danger { background: var(--accent-red); }
 
-/* ---- Sidebar ---- */
+/* ---- Bottom Row: analyses + result side by side ---- */
 
-.side-col { display: flex; flex-direction: column; gap: 1.25rem; }
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.card-recent {
+  max-height: 420px;
+  overflow-y: auto;
+}
 
 /* ---- Link Button (See all / Collapse) ---- */
 
@@ -515,13 +600,17 @@ body {
 /* ---- Responsive ---- */
 
 @media (max-width: 1200px) {
-  .dashboard { grid-template-columns: 1fr; padding: 0 1.5rem 1.5rem; }
+  .dashboard { padding: 0 1.5rem 1.5rem; }
   .navbar { padding: 0 1.5rem; }
   .cards-row { grid-template-columns: 1fr 1fr; }
+  .bottom-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
   .cards-row { grid-template-columns: 1fr; }
+  .bottom-row { grid-template-columns: 1fr; }
   .navbar { padding: 0 1rem; height: 56px; }
   .dashboard { padding: 0 1rem 1.5rem; }
+  .verdict-banner { flex-wrap: wrap; padding: 1rem; gap: 1rem; }
+  .verdict-score { border-left: none; border-top: 1px solid rgba(0,0,0,0.08); padding: 0.5rem 0 0; }
 }
