@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "backendPort",
+      "type": "promptString",
+      "description": "Backend port (WinError 10013 alirsan 8010 gibi baska bir port dene)",
+      "default": "8020"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Backend: FastAPI (uvicorn)",
+      "type": "shell",
+      "command": ".\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "uvicorn",
+        "backend.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "${input:backendPort}"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: Vite dev server",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "dev"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\frontend",
+        "env": {
+          "VITE_API_TARGET": "http://127.0.0.1:${input:backendPort}",
+          "VITE_WS_TARGET": "ws://127.0.0.1:${input:backendPort}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Full stack (backend + frontend)",
+      "dependsOn": [
+        "Backend: FastAPI (uvicorn)",
+        "Frontend: Vite dev server"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+fastapi[all]
+uvicorn[standard]
+torch
+transformers
+librosa
+soundfile
+numpy
+scipy
+python-multipart
+websockets
+pydantic
+pydantic-settings
+scikit-learn
+imageio-ffmpeg
