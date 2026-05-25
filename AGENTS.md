@@ -34,7 +34,7 @@ Legacy training script available at `legacy/train_wav2vec2.py` for reference.
 
 ### Metadata Generation
 ```powershell
-python prepare_librispeech_metadata.py --dataset_root "C:\path\to\dataset" --output_csv data/metadata.csv
+python scripts/prepare_librispeech_metadata.py --dataset_root "C:\path\to\dataset" --output_csv data/metadata.csv
 ```
 
 ## Configuration

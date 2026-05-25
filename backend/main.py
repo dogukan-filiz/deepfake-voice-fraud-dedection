@@ -1,38 +1,35 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import shutil
 import os
 import sys
 
 try:
-    # Proje kokunden calistirma (onerilen): `python -m uvicorn backend.main:app ...`
     from backend.audio_processing import (
-        ozellik_cikar,
+        extract_features,
         _resolve_ffmpeg_executable as resolve_ffmpeg_executable,
         validate_audio_requirements,
     )
     from backend.model_wrapper import get_model, get_model_status
-    from backend.schemas import TahminSonucu, CagriKaydi, FeedbackIstegi
-    from backend.config import ayarlar
+    from backend.schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
+    from backend.config import settings
     _UVICORN_APP_PATH = "backend.main:app"
 except ModuleNotFoundError:
-    # `backend/` klasorunun icinden calistirma: `python -m uvicorn main:app ...`
     from audio_processing import (
-        ozellik_cikar,
+        extract_features,
         _resolve_ffmpeg_executable as resolve_ffmpeg_executable,
         validate_audio_requirements,
     )
     from model_wrapper import get_model, get_model_status
-    from schemas import TahminSonucu, CagriKaydi, FeedbackIstegi
-    from config import ayarlar
+    from schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
+    from config import settings
     _UVICORN_APP_PATH = "main:app"
 
 
-app = FastAPI(title="Banka Cagri Merkezi Deepfake Ses Tespit API")
+app = FastAPI(title="Bank Call Center Deepfake Voice Detection API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,19 +40,13 @@ app.add_middleware(
 )
 
 
-# Basit bir bellek ici cagri listesi (gercek sistemde DB kullan)
-_CALL_LOG: list[CagriKaydi] = []
+_CALL_LOG: list[CallRecord] = []
 
-# Esik deger (gereksinime gore: skor dusukse riskli kabul edilecek)
-THRESHOLD = ayarlar.AUTH_THRESHOLD
+THRESHOLD = settings.AUTH_THRESHOLD
 
 
 def _sniff_audio_container(raw_bytes: bytes) -> str:
-    """Gelen sesin konteynerini kaba bir sekilde tespit et.
-
-    Amac: WAV/FLAC gibi dosyalar icin gereksiz FFmpeg fallback'e dusmemek ve
-    webm/ogg/mp4 gibi tarayici formatlarinda dogru yonlendirme yapmak.
-    """
+    """Detect audio container format from magic bytes."""
     head = raw_bytes[:16]
     if len(head) >= 12 and head[0:4] == b"RIFF" and raw_bytes[8:12] == b"WAVE":
         return "wav"
@@ -67,27 +58,19 @@ def _sniff_audio_container(raw_bytes: bytes) -> str:
         return "mp3"
     if head[:4] == b"\x1aE\xdf\xa3":
         return "webm"
-    # ISO BMFF: ....ftyp
     if len(head) >= 8 and raw_bytes[4:8] == b"ftyp":
         return "mp4"
     return "unknown"
 
 
-@app.post("/analyze", response_model=TahminSonucu)
+@app.post("/analyze", response_model=PredictionResult)
 async def analyze_call(file: UploadFile = File(...)):
-    """Ses dosyasini analiz et, guvenilirlik skoru ve dolandiricilik riski uret.
-
-    FR1, FR2, FR3, FR4, FR5 karsilanir.
-    """
+    """Analyze an audio file and return authenticity score with fraud risk assessment."""
 
     raw_bytes = await file.read()
 
-    # DEBUG: istemciden gelen dosya turunu logla
     print("[ANALYZE] content_type=", file.content_type, "size=", len(raw_bytes))
 
-    # 1) Ozellik cikarimi (mel-spektrogram + spectral residual)
-    # - WAV/FLAC genelde dogrudan okunabilir (soundfile).
-    # - Tarayici kayitlari webm/ogg/mp4/m4a gibi formatlarda gelebilir; bunlar icin FFmpeg gerekebilir.
     mime = (file.content_type or "").lower()
     container = _sniff_audio_container(raw_bytes)
     browser_like = any(
@@ -107,7 +90,7 @@ async def analyze_call(file: UploadFile = File(...)):
     direct_err: str | None = None
     if not prefer_ffmpeg:
         try:
-            features = ozellik_cikar(raw_bytes, kullan_ffmpeg=False)
+            features = extract_features(raw_bytes, use_ffmpeg=False)
         except ValueError as e:
             direct_err = str(e)
             features = None
@@ -115,98 +98,97 @@ async def analyze_call(file: UploadFile = File(...)):
         features = None
 
     if features is None:
-        # FFmpeg fallback (varsa)
         try:
-            features = ozellik_cikar(raw_bytes, kullan_ffmpeg=True)
+            features = extract_features(raw_bytes, use_ffmpeg=True)
         except ValueError as e:
-            # WAV/FLAC gibi gorunen ama PCM olmayan (ADPCM vb.) dosyalar Windows'ta okunamayabilir.
             if container in {"wav", "flac"} and direct_err:
                 if resolve_ffmpeg_executable() is None:
                     raise HTTPException(
                         status_code=400,
                         detail=(
-                            "WAV/FLAC dosyasi dogrudan okunamadi (muhtemelen desteklenmeyen codec / bozuk dosya). "
-                            "Cozum: dosyayi PCM WAV (16-bit) olarak tekrar export edin veya FFmpeg kurup PATH'e ekleyin. "
-                            f"Detay: {direct_err}"
+                            "Could not read this WAV/FLAC file directly (possibly unsupported codec or corrupted). "
+                            "Try re-exporting as PCM WAV 16-bit, or install FFmpeg and add it to your PATH. "
+                            f"Details: {direct_err}"
                         ),
                     )
             raise HTTPException(status_code=400, detail=str(e))
 
-    # 1.5) Pre-checks: duration >= 2s and not silent (no VAD, just basic amplitude/energy)
     try:
         validate_audio_requirements(
             features["waveform"],
             int(features["sr"]),
-            min_duration_sec=float(ayarlar.AUDIO_MIN_DURATION_SEC),
-            min_peak_abs=float(ayarlar.AUDIO_MIN_PEAK_ABS),
-            min_rms=float(ayarlar.AUDIO_MIN_RMS),
+            min_duration_sec=float(settings.AUDIO_MIN_DURATION_SEC),
+            min_peak_abs=float(settings.AUDIO_MIN_PEAK_ABS),
+            min_rms=float(settings.AUDIO_MIN_RMS),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # 2) Model tahmini
     model = get_model()
-    model_out = model.tahmin_et(features)
+    model_out = model.predict(features)
 
     p_real = model_out["p_real"]
     p_fake = model_out["p_fake"]
     spectral_resid = model_out["spectral_residual"]
+    num_chunks = int(model_out.get("num_chunks", 0))
+    max_chunk_p_fake = model_out.get("max_chunk_p_fake", p_fake)
 
     authenticity_score = float(p_real)
     is_suspected_fraud = authenticity_score < THRESHOLD
+    risk = calculate_risk_level(authenticity_score)
 
-    cagri_id = f"call-{datetime.utcnow().timestamp()}"
-    now = datetime.utcnow()
+    call_id = f"call-{datetime.now(timezone.utc).timestamp()}"
+    now = datetime.now(timezone.utc)
 
-    kayit = CagriKaydi(
-        cagri_id=cagri_id,
+    record = CallRecord(
+        call_id=call_id,
         authenticity_score=authenticity_score,
         is_suspected_fraud=is_suspected_fraud,
+        risk_level=risk,
         timestamp=now,
     )
-    _CALL_LOG.append(kayit)
+    _CALL_LOG.append(record)
 
-    return TahminSonucu(
-        cagri_id=cagri_id,
+    return PredictionResult(
+        call_id=call_id,
         authenticity_score=authenticity_score,
         is_suspected_fraud=is_suspected_fraud,
+        risk_level=risk,
         p_real=p_real,
         p_fake=p_fake,
         spectral_residual=spectral_resid,
+        num_chunks=num_chunks,
+        max_chunk_p_fake=max_chunk_p_fake,
         timestamp=now,
     )
 
 
-@app.get("/calls", response_model=List[CagriKaydi])
+@app.get("/calls", response_model=List[CallRecord])
 async def list_calls(limit: int = 50):
-    """Son cagri kayitlarini listele (dashboard icin)."""
+    """List recent call analysis records for the dashboard."""
     return list(reversed(_CALL_LOG))[:limit]
 
 
 @app.post("/feedback")
-async def add_feedback(feedback: FeedbackIstegi):
-    """Analist geri bildirimi al (FR7).
-
-    Simdilik sadece log'a not dusuyoruz; gercek projede DB'ye yazilip
-    yeniden egitim pipeline'ina girdi olarak kullanilir.
-    """
-    # Burada sadece basit bir ornek: ilgili cagri kaydini bul ve not ekle.
-    for idx, kayit in enumerate(_CALL_LOG):
-        if kayit.cagri_id == feedback.cagri_id:
-            not_parcalari = []
+async def add_feedback(feedback: FeedbackRequest):
+    """Accept analyst feedback on a previous call analysis."""
+    for idx, record in enumerate(_CALL_LOG):
+        if record.call_id == feedback.call_id:
+            note_parts = []
             if feedback.is_false_positive:
-                not_parcalari.append("false_positive")
+                note_parts.append("false_positive")
             if feedback.is_confirmed_fraud:
-                not_parcalari.append("confirmed_fraud")
-            if feedback.aciklama:
-                not_parcalari.append(feedback.aciklama)
+                note_parts.append("confirmed_fraud")
+            if feedback.description:
+                note_parts.append(feedback.description)
 
-            _CALL_LOG[idx] = CagriKaydi(
-                cagri_id=kayit.cagri_id,
-                authenticity_score=kayit.authenticity_score,
-                is_suspected_fraud=kayit.is_suspected_fraud,
-                timestamp=kayit.timestamp,
-                notlar="; ".join(not_parcalari) if not_parcalari else kayit.notlar,
+            _CALL_LOG[idx] = CallRecord(
+                call_id=record.call_id,
+                authenticity_score=record.authenticity_score,
+                is_suspected_fraud=record.is_suspected_fraud,
+                risk_level=record.risk_level,
+                timestamp=record.timestamp,
+                notes="; ".join(note_parts) if note_parts else record.notes,
             )
             break
 
@@ -215,23 +197,17 @@ async def add_feedback(feedback: FeedbackIstegi):
 
 @app.websocket("/ws/live")
 async def websocket_live(websocket: WebSocket):
-    """Gercek zamanli izleme icin basit WebSocket (FR1, FR5, FR6).
-
-    Frontend bu kanaldan periyodik olarak son cagriyi cekebilir veya
-    ileride buraya direkt streaming baglanabilir.
-    """
+    """WebSocket endpoint for real-time call monitoring."""
     await websocket.accept()
     try:
         last_len = 0
         while True:
-            # Bu ornek, her yeni cagri eklenince butun log'u gonderiyor.
-            # Gercekte sadece son kaydi gondermek daha mantikli.
             if len(_CALL_LOG) != last_len:
                 last_len = len(_CALL_LOG)
                 if _CALL_LOG:
-                    son = _CALL_LOG[-1]
-                    await websocket.send_json(son.dict())
-            await websocket.receive_text()  # ping/pong icin basit bekleme
+                    latest = _CALL_LOG[-1]
+                    await websocket.send_json(latest.model_dump(mode="json"))
+            await websocket.receive_text()
     except WebSocketDisconnect:
         pass
 
@@ -251,20 +227,18 @@ async def health_check():
         "module_file": __file__,
     }
 
-    # Optional, lightweight self-test (enable via env var) to help debug cases where
-    # the model always outputs the same class.
     if os.getenv("MODEL_SELFTEST", "").strip() in {"1", "true", "True", "YES", "yes"}:
         try:
             import numpy as np
             t = np.arange(16000) / 16000.0
             sine = np.sin(2 * np.pi * 1000 * t).astype(np.float32)
-            out = get_model().tahmin_et({"waveform": sine, "sr": 16000})
+            out = get_model().predict({"waveform": sine, "sr": 16000})
             ok = (abs(out["p_real"] + out["p_fake"] - 1.0) < 1e-3
                   and out["p_real"] != out["p_fake"])
             payload["model_selftest"] = {
                 "ran": True,
                 "architecture": "AASIST",
-                "model_dir": str(get_model().model_dir),
+                "model_dir": str(getattr(get_model(), "model_dir", "N/A")),
                 "sine_p_real": out["p_real"],
                 "sine_p_fake": out["p_fake"],
                 "ok": ok,
