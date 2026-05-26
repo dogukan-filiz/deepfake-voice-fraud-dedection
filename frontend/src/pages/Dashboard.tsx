@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 import {
   BarChart3, Check, X, AlertTriangle, HelpCircle,
   Upload, Calendar, Mic, Square, ShieldCheck, ShieldAlert, ShieldX, Globe,
-  FlaskConical, FileAudio, Loader2,
+  FlaskConical, FileAudio, Loader2, Trash2,
 } from 'lucide-react';
 import { type Locale, type Translations, getTranslations, detectLocale, persistLocale } from '../i18n';
 
@@ -261,6 +261,23 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const deleteCall = async (callId: string) => {
+    try {
+      await api.delete(`/calls/${encodeURIComponent(callId)}`);
+      await fetchCalls();
+      if (result?.call_id === callId) setResult(null);
+    } catch {}
+  };
+
+  const deleteAllCalls = async () => {
+    if (!confirm(t.recent.confirmDeleteAll)) return;
+    try {
+      await api.delete('/calls');
+      setCalls([]);
+      setResult(null);
+    } catch {}
+  };
+
   return (
     <div className="app-shell">
       {/* Navbar */}
@@ -427,11 +444,18 @@ export const Dashboard: React.FC = () => {
           <section className="card card-recent">
             <div className="card-header">
               <h3>{t.recent.title}</h3>
-              {calls.length > 6 && (
-                <button className="link-btn" onClick={() => setShowAllCalls(prev => !prev)}>
-                  {showAllCalls ? t.recent.collapse : t.recent.seeAll}
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                {calls.length > 0 && (
+                  <button className="link-btn danger-link" onClick={deleteAllCalls}>
+                    <Trash2 size={12} /> {t.recent.deleteAll}
+                  </button>
+                )}
+                {calls.length > 6 && (
+                  <button className="link-btn" onClick={() => setShowAllCalls(prev => !prev)}>
+                    {showAllCalls ? t.recent.collapse : t.recent.seeAll}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="analyses-list">
               {calls.length === 0 && (
@@ -449,7 +473,10 @@ export const Dashboard: React.FC = () => {
                       </div>
                       <span className="item-score">{t.recent.scorePrefix}{c.authenticity_score.toFixed(3)}</span>
                     </div>
-                    <div className="item-meta"><span className="item-time">{timeAgo(c.timestamp, locale)}</span></div>
+                    <div className="item-meta">
+                      <span className="item-time">{timeAgo(c.timestamp, locale)}</span>
+                      <button className="item-delete" onClick={() => deleteCall(c.call_id)}><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 );
               })}

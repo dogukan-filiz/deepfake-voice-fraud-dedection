@@ -40,7 +40,31 @@ app.add_middleware(
 )
 
 
-_CALL_LOG: list[CallRecord] = []
+from pathlib import Path as _PathTop
+import json as _json
+
+_CALL_LOG_FILE = _PathTop(__file__).resolve().parents[1] / "data" / "call_log.json"
+
+
+def _load_call_log() -> list[CallRecord]:
+    if _CALL_LOG_FILE.is_file():
+        try:
+            raw = _json.loads(_CALL_LOG_FILE.read_text(encoding="utf-8"))
+            return [CallRecord(**r) for r in raw]
+        except Exception:
+            return []
+    return []
+
+
+def _save_call_log(log: list[CallRecord]) -> None:
+    _CALL_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _CALL_LOG_FILE.write_text(
+        _json.dumps([r.model_dump(mode="json") for r in log], indent=2),
+        encoding="utf-8",
+    )
+
+
+_CALL_LOG: list[CallRecord] = _load_call_log()
 
 THRESHOLD = settings.AUTH_THRESHOLD
 
@@ -148,6 +172,7 @@ async def analyze_call(file: UploadFile = File(...)):
         timestamp=now,
     )
     _CALL_LOG.append(record)
+    _save_call_log(_CALL_LOG)
 
     return PredictionResult(
         call_id=call_id,
@@ -190,8 +215,28 @@ async def add_feedback(feedback: FeedbackRequest):
                 timestamp=record.timestamp,
                 notes="; ".join(note_parts) if note_parts else record.notes,
             )
+            _save_call_log(_CALL_LOG)
             break
 
+    return {"status": "ok"}
+
+
+@app.delete("/calls/{call_id}")
+async def delete_call(call_id: str):
+    """Delete a single call record."""
+    for idx, record in enumerate(_CALL_LOG):
+        if record.call_id == call_id:
+            _CALL_LOG.pop(idx)
+            _save_call_log(_CALL_LOG)
+            return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Call not found")
+
+
+@app.delete("/calls")
+async def delete_all_calls():
+    """Delete all call records."""
+    _CALL_LOG.clear()
+    _save_call_log(_CALL_LOG)
     return {"status": "ok"}
 
 
@@ -329,6 +374,7 @@ async def analyze_test_file(category: str, filename: str):
         timestamp=now,
     )
     _CALL_LOG.append(record)
+    _save_call_log(_CALL_LOG)
 
     return PredictionResult(
         call_id=call_id,

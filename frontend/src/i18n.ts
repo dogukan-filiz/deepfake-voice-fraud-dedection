@@ -46,6 +46,8 @@ const translations = {
       empty: 'No analyses yet',
       callPrefix: 'Call #',
       scorePrefix: 'Score: ',
+      deleteAll: 'Clear all',
+      confirmDeleteAll: 'Clear all analyses?',
     },
     result: {
       title: 'Latest Analysis',
@@ -131,6 +133,8 @@ const translations = {
       empty: 'Henüz analiz yapılmadı',
       callPrefix: 'Çağrı #',
       scorePrefix: 'Skor: ',
+      deleteAll: 'Tümünü temizle',
+      confirmDeleteAll: 'Tüm analizler silinsin mi?',
     },
     result: {
       title: 'Son Analiz Sonucu',
