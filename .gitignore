@@ -26,7 +26,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 node_modules/
-models/
+/models/
+!backend/aasist/models/
 *.zip
 *.wav
 *.flac

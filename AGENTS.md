@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Read CLAUDE.md first for full architecture, commands, and design decisions.**
+
 ## Project Overview
 
 **Deepfake Voice Fraud Detection System** - Full-stack FastAPI backend + React frontend for detecting synthetic voice attacks in bank call centers.

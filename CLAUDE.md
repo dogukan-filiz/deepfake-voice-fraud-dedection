@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-Bank call-center deepfake voice fraud detection system. Full-stack: FastAPI backend runs AASIST model inference on uploaded/recorded audio, React dashboard visualizes results.
+Bank call-center deepfake voice fraud detection system. Full-stack: FastAPI backend runs AASIST model inference on uploaded/recorded audio, React dashboard visualizes results. EN/TR i18n support.
 
 ## Commands
 
@@ -37,10 +37,8 @@ $env:MODEL_SELFTEST='1'
 # Then GET /health and check model_selftest field
 ```
 
-### Metadata Generation
-```powershell
-python scripts/prepare_librispeech_metadata.py --dataset_root "C:\path\to\dataset" --output_csv data/metadata.csv
-```
+### Test Library
+50 real + 50 fake WAV files in `test_audio/real/` and `test_audio/fake/`. Source: garystafford/deepfake-audio-detection on HuggingFace. Accessible via `GET /test-library` and `POST /analyze-test?category=real&filename=real_000.wav`.
 
 ## Architecture
 
@@ -66,38 +64,42 @@ python scripts/prepare_librispeech_metadata.py --dataset_root "C:\path\to\datase
 
 ### Model System
 
-**Primary:** AASIST, raw-waveform graph attention network (~297k params, ASVspoof 2019 LA).
+**Primary:** Official AASIST pre-trained weights from clovaai/aasist (EER 0.83% on ASVspoof 2019 LA eval).
+Raw-waveform graph attention network, ~297k params.
+
 **Fallback:** `HeuristicFallbackModel`, sigmoid mapping on spectral anomaly score (when AASIST fails to load).
 
 Model loading priority:
 1. `LOCAL_MODEL_DIR` env var (if set)
 2. `models/aasist_finetuned` (preferred if `best_finetuned.pth` exists at repo root)
-3. `models/aasist_baseline` (default)
+3. `models/aasist_baseline` (default, official clovaai weights)
 
 Required model directory contents: `model_config.json`, `weights.pth`, optionally `meta.json`.
 
-AASIST model code imported from `backend/aasist/` which is added to `sys.path` at runtime.
+AASIST model code: `backend/aasist/models/AASIST.py` (from official clovaai/aasist repo). Added to `sys.path` at runtime.
 
 ### Backend Modules
 
 | Module | Role |
 |--------|------|
-| `backend/main.py` | FastAPI app, endpoints, container sniffing |
+| `backend/main.py` | FastAPI app, endpoints, container sniffing, test library |
 | `backend/audio_processing.py` | Load/resample audio, mel-spectrogram, spectral anomaly, AASIST prep |
 | `backend/model_wrapper.py` | AASIST model loading, chunked inference, risk-weighted aggregation, fallback |
 | `backend/schemas.py` | Pydantic models (PredictionResult, CallRecord, FeedbackRequest, RiskLevel) |
 | `backend/config.py` | Settings via pydantic-settings (threshold, audio limits) |
-| `legacy/inference.py` | Legacy HuggingFace wav2vec2 inference (unused) |
-| `legacy/tf_experimental/` | TensorFlow Conformer variant (inactive) |
 
 ### Frontend
 
-Single-page React app (Vite + TypeScript). One component: `Dashboard.tsx`.
-- File upload analysis
-- Live microphone recording (PCM capture with client-side WAV encoding as fallback)
-- Real-time call log with recharts line chart
+Single-page React app (Vite + TypeScript + lucide-react icons). One component: `Dashboard.tsx`.
+- Verdict banner at top after analysis (green/red, pulses on fraud)
+- Score tracker chart (recharts)
+- Live microphone recording with PCM WAV encoding fallback
+- File upload with drag-drop zone
+- Detection summary stats (total/flagged/clean)
+- Recent analyses list with risk badges
+- Test library modal (50 real + 50 fake samples, one-click analyze)
+- EN/TR i18n with Globe toggle, persists to localStorage
 - Color-coded risk levels (green/yellow/orange/red)
-- Polls `/api/calls` every 5s, `/api/health` every 10s
 
 Vite proxy: `/api/*` goes to backend (default port 8010), `/ws/*` goes to WebSocket.
 
@@ -107,42 +109,47 @@ Vite proxy: `/api/*` goes to backend (default port 8010), `/ws/*` goes to WebSoc
 |--------|------|---------|
 | POST | `/analyze` | Upload audio file, get fraud prediction with risk level |
 | GET | `/calls` | List recent call records (in-memory) |
-| POST | `/feedback` | Analyst feedback on a call (false positive, confirmed fraud) |
+| POST | `/feedback` | Analyst feedback on a call |
+| GET | `/test-library` | List test audio files by category (real/fake) |
+| POST | `/analyze-test` | Analyze a file from test library by category+filename |
 | WS | `/ws/live` | WebSocket for real-time updates |
 | GET | `/health` | System status, FFmpeg availability, model diagnostics |
 
 ## Project Structure
 
 ```
-backend/                  # FastAPI application (active)
-  aasist/                 # AASIST training framework (NAVER, MIT license)
-  main.py                 # App entry point
+backend/                  # FastAPI application
+  aasist/                 # AASIST framework (NAVER, MIT license)
+    models/AASIST.py      # Model architecture (from clovaai/aasist)
+  main.py                 # App entry point + all endpoints
   audio_processing.py     # Feature extraction pipeline
   model_wrapper.py        # AASIST inference wrapper
   schemas.py              # Pydantic models
   config.py               # Settings
-frontend/                 # Vite + React dashboard
-  src/pages/Dashboard.tsx  # Single-page UI
+frontend/                 # Vite + React + TypeScript
+  src/pages/Dashboard.tsx # Single-page dashboard
+  src/i18n.ts             # EN/TR translations
+  public/                 # Logo, favicon
 models/                   # Model weights (gitignored, local only)
-tests/                    # All test scripts (smoke, integration, backend)
-scripts/                  # Data prep and conversion utilities
-  evaluation/             # Model evaluation and analysis scripts
-legacy/                   # Dead/superseded code
-  tf_experimental/        # TensorFlow Conformer variant (inactive)
-  train_wav2vec2.py       # Old wav2vec2 training script
-  inference.py            # Old HuggingFace inference
-docs/                     # Session logs, TF architecture docs
+  aasist_baseline/        # Official clovaai AASIST weights
+test_audio/               # Test samples (gitignored)
+  real/                   # 50 real voice WAVs
+  fake/                   # 50 fake/synthetic WAVs
+tests/                    # Test scripts
+scripts/                  # Utilities + evaluation
+legacy/                   # Dead code
+docs/                     # Session logs, architecture docs
 ```
 
 ## Key Design Decisions
 
-- **All-English codebase**: identifiers, API fields, error messages, and UI text are in English.
+- **All-English codebase**: identifiers, API fields, error messages in English. UI supports EN/TR via i18n.
 - **In-memory call log**: no database; `_CALL_LOG` list resets on restart.
-- **Dual import paths**: `backend/main.py` handles being run from project root (`backend.X`) or from within `backend/` (`X` directly).
+- **Dual import paths**: `backend/main.py` handles being run from project root or from within `backend/`.
 - **FFmpeg fallback chain**: explicit env var, then system PATH, then `imageio-ffmpeg` package.
 - **Audio chunking**: 64600 samples (AASIST training window), non-overlapping, silent chunks filtered.
-- **Risk-weighted aggregation**: 60% mean + 40% worst-case chunk score prevents single-fake-chunk dilution.
-- **Spectral anomaly adjustment**: high anomaly scores (>0.6) nudge the fraud probability upward.
+- **Risk-weighted aggregation**: 60% mean + 40% worst-case chunk score prevents dilution.
+- **SPA design**: all buttons are functional, no placeholder/decorative elements.
 
 ## Environment Variables
 
