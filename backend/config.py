@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    AUTH_THRESHOLD: float = 0.5
+    AUTH_THRESHOLD: float = 0.35  # Optimal threshold based on evaluation
 
     AUDIO_MIN_DURATION_SEC: float = 2.0
     AUDIO_MIN_PEAK_ABS: float = 5e-4

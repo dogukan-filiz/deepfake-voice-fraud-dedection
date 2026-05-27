@@ -13,7 +13,10 @@ if str(_AASIST_DIR) not in sys.path:
 import librosa
 import numpy as np
 import torch
-from backend.audio_processing import prepare_for_aasist
+try:
+    from .audio_processing import prepare_for_aasist
+except ImportError:
+    from audio_processing import prepare_for_aasist
 
 
 def _repo_root() -> Path:
@@ -233,26 +236,37 @@ class HeuristicFallbackModel:
         }
 
 
-_model_instance: Optional[DeepfakeVoiceModel | HeuristicFallbackModel] = None
+_model_instance: Optional[Any] = None  # Can be DeepfakeVoiceModel, HuggingFaceDeepfakeModel, or HeuristicFallbackModel
 _model_load_error: Optional[str] = None
+_USE_HF_MODEL = True  # Use HF model instead of heuristic
 
 
 def get_model_status() -> Dict:
     """Return model status without triggering load."""
-    try:
-        default_dir = str(_resolve_model_dir())
-        default_weights = str(_resolve_weights_path(Path(default_dir)))
-    except Exception as e:
-        default_dir = f"<unresolved: {type(e).__name__}: {e}>"
-        default_weights = "<unresolved>"
+    if _USE_HF_MODEL:
+        model_info = {
+            "model_type": "huggingface",
+            "model_id": "Speech-Arena-2025/DF_Arena_1B_V_1",
+        }
+    else:
+        try:
+            default_dir = str(_resolve_model_dir())
+            default_weights = str(_resolve_weights_path(Path(default_dir)))
+        except Exception as e:
+            default_dir = f"<unresolved: {type(e).__name__}: {e}>"
+            default_weights = "<unresolved>"
+        model_info = {
+            "model_type": "aasist",
+            "model_dir": default_dir,
+            "weights_path": default_weights,
+        }
 
     if _model_instance is None:
         return {
             "loaded": False,
             "type": None,
             "error": _model_load_error,
-            "model_dir": default_dir,
-            "weights_path": default_weights,
+            **model_info
         }
 
     t = type(_model_instance).__name__
@@ -260,10 +274,13 @@ def get_model_status() -> Dict:
         "loaded": True,
         "type": t,
         "error": _model_load_error,
-        "model_dir": getattr(_model_instance, "model_dir", default_dir),
-        "weights_path": getattr(_model_instance, "weights_path", default_weights),
+        **model_info
     }
 
+    if hasattr(_model_instance, "model_dir"):
+        status["model_dir"] = str(_model_instance.model_dir)
+    if hasattr(_model_instance, "weights_path"):
+        status["weights_path"] = str(_model_instance.weights_path)
     if hasattr(_model_instance, "id2label"):
         status["id2label"] = getattr(_model_instance, "id2label")
     if hasattr(_model_instance, "real_label_id"):
@@ -274,17 +291,46 @@ def get_model_status() -> Dict:
     return status
 
 
-def get_model() -> DeepfakeVoiceModel | HeuristicFallbackModel:
+def get_model() -> Any:
     global _model_instance
     global _model_load_error
     if _model_instance is None:
-        try:
-            _model_instance = DeepfakeVoiceModel()
-            _model_load_error = None
-        except Exception as e:
-            _model_instance = HeuristicFallbackModel()
-            _model_load_error = f"Local model load failed: {type(e).__name__}: {e}"
-            print("[MODEL] Falling back to heuristic model.")
-            print("[MODEL]", _model_load_error)
+        if _USE_HF_MODEL:
+            # Try Hugging Face model first
+            try:
+                import sys
+                import os
+                # Add current directory to path for relative imports
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                if current_dir not in sys.path:
+                    sys.path.insert(0, current_dir)
+                    
+                from model_wrapper_hf import HuggingFaceDeepfakeModel
+                _model_instance = HuggingFaceDeepfakeModel()
+                _model_load_error = None
+                print("[MODEL] Successfully loaded Hugging Face model: Speech-Arena-2025/DF_Arena_1B_V_1")
+            except Exception as e:
+                _model_load_error = f"HF model load failed: {type(e).__name__}: {e}"
+                print("[MODEL] HF model failed, falling back to AASIST")
+                print("[MODEL]", _model_load_error)
+                # Fall back to AASIST
+                try:
+                    _model_instance = DeepfakeVoiceModel()
+                    _model_load_error = None
+                except Exception as e2:
+                    _model_instance = HeuristicFallbackModel()
+                    _model_load_error = f"Both models failed. HF: {e}, AASIST: {e2}"
+                    print("[MODEL] Falling back to heuristic model.")
+                    print("[MODEL]", _model_load_error)
+        else:
+            # Original AASIST model logic
+            try:
+                _model_instance = DeepfakeVoiceModel()
+                _model_load_error = None
+            except Exception as e:
+                _model_instance = HeuristicFallbackModel()
+                _model_load_error = f"Local model load failed: {type(e).__name__}: {e}"
+                print("[MODEL] Falling back to heuristic model.")
+                print("[MODEL]", _model_load_error)
 
     return _model_instance  # type: ignore[return-value]

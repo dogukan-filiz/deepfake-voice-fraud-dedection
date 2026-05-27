@@ -18,7 +18,7 @@ def validate_audio_requirements(
     waveform: np.ndarray,
     sr: int,
     *,
-    min_duration_sec: float = 2.0,
+    min_duration_sec: float = 1.0,
     min_peak_abs: float = 5e-4,
     min_rms: float = 1e-4,
 ) -> None:

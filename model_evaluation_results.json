@@ -1,0 +1,162 @@
+[
+  {
+    "filename": "real_001.wav",
+    "true_label": "real",
+    "authenticity_score": 0.376875,
+    "p_real": 0.376875,
+    "p_fake": 0.623125,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_002.wav",
+    "true_label": "real",
+    "authenticity_score": 0.426089,
+    "p_real": 0.426089,
+    "p_fake": 0.573911,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_003.wav",
+    "true_label": "real",
+    "authenticity_score": 0.408876,
+    "p_real": 0.408876,
+    "p_fake": 0.591124,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_004.wav",
+    "true_label": "real",
+    "authenticity_score": 0.459917,
+    "p_real": 0.459917,
+    "p_fake": 0.540083,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_005.wav",
+    "true_label": "real",
+    "authenticity_score": 0.446161,
+    "p_real": 0.446161,
+    "p_fake": 0.553839,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_006.wav",
+    "true_label": "real",
+    "authenticity_score": 0.432769,
+    "p_real": 0.432769,
+    "p_fake": 0.567231,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_007.wav",
+    "true_label": "real",
+    "authenticity_score": 0.351821,
+    "p_real": 0.351821,
+    "p_fake": 0.648179,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_008.wav",
+    "true_label": "real",
+    "authenticity_score": 0.332325,
+    "p_real": 0.332325,
+    "p_fake": 0.667675,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_009.wav",
+    "true_label": "real",
+    "authenticity_score": 0.433073,
+    "p_real": 0.433073,
+    "p_fake": 0.566927,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "real_010.wav",
+    "true_label": "real",
+    "authenticity_score": 0.259971,
+    "p_real": 0.259971,
+    "p_fake": 0.740029,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_001.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.179346,
+    "p_real": 0.179346,
+    "p_fake": 0.820654,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_002.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.224158,
+    "p_real": 0.224158,
+    "p_fake": 0.775842,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_003.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.152937,
+    "p_real": 0.152937,
+    "p_fake": 0.847063,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_004.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.304093,
+    "p_real": 0.304093,
+    "p_fake": 0.695907,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_005.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.160752,
+    "p_real": 0.160752,
+    "p_fake": 0.839248,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_006.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.305987,
+    "p_real": 0.305987,
+    "p_fake": 0.694013,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_007.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.437792,
+    "p_real": 0.437792,
+    "p_fake": 0.562208,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_008.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.358545,
+    "p_real": 0.358545,
+    "p_fake": 0.641455,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_009.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.335814,
+    "p_real": 0.335814,
+    "p_fake": 0.664186,
+    "predicted_label": "fake"
+  },
+  {
+    "filename": "fake_010.wav",
+    "true_label": "fake",
+    "authenticity_score": 0.344025,
+    "p_real": 0.344025,
+    "p_fake": 0.655975,
+    "predicted_label": "fake"
+  }
+]
