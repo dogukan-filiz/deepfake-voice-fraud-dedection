@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-Bank call-center deepfake voice fraud detection system. Full-stack: FastAPI backend runs AASIST model inference on uploaded/recorded audio, React dashboard visualizes results. EN/TR i18n support.
+Bank call-center deepfake voice fraud detection system. Full-stack: FastAPI backend runs model inference on uploaded/recorded audio, React dashboard visualizes results. EN/TR i18n support.
 
 ## Commands
 
@@ -51,30 +51,28 @@ $env:MODEL_SELFTEST='1'
    - Resamples to 16 kHz mono
    - Computes mel-spectrogram (64 mels, 1024 FFT, 256 hop)
    - Computes spectral anomaly score (spectral flatness + temporal consistency + HF residual ratio)
-4. **Audio validation**: `validate_audio_requirements()` rejects silence and clips under 2 seconds
-5. **Model inference** via `DeepfakeVoiceModel.predict()`:
-   - Trims silence (librosa, top_db=30)
-   - Chunks audio into 64600-sample windows (4.04s, non-overlapping)
-   - Filters silent chunks (below -30dB of loudest)
-   - Runs AASIST per chunk, aggregates with risk-weighted blend (60% mean + 40% worst-case)
-   - Adjusts score using spectral anomaly when above 0.6
-   - Returns `{p_real, p_fake, spectral_residual, num_chunks, max_chunk_p_fake}`
-6. **Fraud decision**: `authenticity_score = p_real`; fraud if below `AUTH_THRESHOLD` (default 0.5)
+4. **Audio validation**: `validate_audio_requirements()` rejects silence and clips under configured minimum duration
+5. **Model inference** via `model.predict()`:
+   - **Primary (HuggingFace)**: `HuggingFaceDeepfakeModel` uses `Speech-Arena-2025/DF_Arena_1B_V_1` via transformers pipeline with `task="antispoofing"`. Processes whole audio at once.
+   - **Fallback (AASIST)**: `DeepfakeVoiceModel` chunks audio into 64600-sample windows (4.04s), filters silent chunks, runs AASIST per chunk, aggregates with 60% mean + 40% worst-case blend
+   - **Last resort**: `HeuristicFallbackModel` uses sigmoid on spectral anomaly score
+   - All return `{p_real, p_fake, spectral_residual, num_chunks, max_chunk_p_fake}`
+6. **Fraud decision**: `authenticity_score = p_real`; fraud if below `AUTH_THRESHOLD` (default 0.35)
 7. **Risk classification**: LOW (>=0.75), MEDIUM (>=0.50), HIGH (>=0.25), CRITICAL (<0.25)
 
 ### Model System
 
-**Primary:** Official AASIST pre-trained weights from clovaai/aasist (EER 0.83% on ASVspoof 2019 LA eval).
-Raw-waveform graph attention network, ~297k params.
+Loading chain (controlled by `_USE_HF_MODEL` flag in model_wrapper.py):
+1. `HuggingFaceDeepfakeModel` (Speech-Arena-2025/DF_Arena_1B_V_1, downloads from HF Hub)
+2. `DeepfakeVoiceModel` (local AASIST weights, ~297k params)
+3. `HeuristicFallbackModel` (spectral anomaly sigmoid)
 
-**Fallback:** `HeuristicFallbackModel`, sigmoid mapping on spectral anomaly score (when AASIST fails to load).
+Each model implements `predict(features: Dict) -> Dict` with identical return schema.
 
-Model loading priority:
+AASIST model loading priority (when HF model fails):
 1. `LOCAL_MODEL_DIR` env var (if set)
 2. `models/aasist_finetuned` (preferred if `best_finetuned.pth` exists at repo root)
 3. `models/aasist_baseline` (default, official clovaai weights)
-
-Required model directory contents: `model_config.json`, `weights.pth`, optionally `meta.json`.
 
 AASIST model code: `backend/aasist/models/AASIST.py` (from official clovaai/aasist repo). Added to `sys.path` at runtime.
 
@@ -82,11 +80,12 @@ AASIST model code: `backend/aasist/models/AASIST.py` (from official clovaai/aasi
 
 | Module | Role |
 |--------|------|
-| `backend/main.py` | FastAPI app, endpoints, container sniffing, test library |
+| `backend/main.py` | FastAPI app, all endpoints, container sniffing, call log persistence |
 | `backend/audio_processing.py` | Load/resample audio, mel-spectrogram, spectral anomaly, AASIST prep |
-| `backend/model_wrapper.py` | AASIST model loading, chunked inference, risk-weighted aggregation, fallback |
+| `backend/model_wrapper.py` | Model loading chain (HF -> AASIST -> heuristic), AASIST chunked inference |
+| `backend/model_wrapper_hf.py` | HuggingFace model wrapper (Speech-Arena-2025/DF_Arena_1B_V_1) |
 | `backend/schemas.py` | Pydantic models (PredictionResult, CallRecord, FeedbackRequest, RiskLevel) |
-| `backend/config.py` | Settings via pydantic-settings (threshold, audio limits) |
+| `backend/config.py` | Settings via pydantic-settings (threshold=0.35, audio limits) |
 
 ### Frontend
 
@@ -97,6 +96,7 @@ Single-page React app (Vite + TypeScript + lucide-react icons). One component: `
 - File upload with drag-drop zone
 - Detection summary stats (total/flagged/clean)
 - Recent analyses list with risk badges
+- Per-item and bulk delete on analyses
 - Test library modal (50 real + 50 fake samples, one-click analyze)
 - EN/TR i18n with Globe toggle, persists to localStorage
 - Color-coded risk levels (green/yellow/orange/red)
@@ -108,7 +108,9 @@ Vite proxy: `/api/*` goes to backend (default port 8010), `/ws/*` goes to WebSoc
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/analyze` | Upload audio file, get fraud prediction with risk level |
-| GET | `/calls` | List recent call records (in-memory) |
+| GET | `/calls` | List recent call records (persisted to data/call_log.json) |
+| DELETE | `/calls/{call_id}` | Delete a single call record |
+| DELETE | `/calls` | Delete all call records |
 | POST | `/feedback` | Analyst feedback on a call |
 | GET | `/test-library` | List test audio files by category (real/fake) |
 | POST | `/analyze-test` | Analyze a file from test library by category+filename |
@@ -123,7 +125,8 @@ backend/                  # FastAPI application
     models/AASIST.py      # Model architecture (from clovaai/aasist)
   main.py                 # App entry point + all endpoints
   audio_processing.py     # Feature extraction pipeline
-  model_wrapper.py        # AASIST inference wrapper
+  model_wrapper.py        # Model loading chain + AASIST inference
+  model_wrapper_hf.py     # HuggingFace model wrapper
   schemas.py              # Pydantic models
   config.py               # Settings
 frontend/                 # Vite + React + TypeScript
@@ -135,6 +138,8 @@ models/                   # Model weights (gitignored, local only)
 test_audio/               # Test samples (gitignored)
   real/                   # 50 real voice WAVs
   fake/                   # 50 fake/synthetic WAVs
+data/                     # Persistent data (gitignored)
+  call_log.json           # Persisted call analysis records
 tests/                    # Test scripts
 scripts/                  # Utilities + evaluation
 legacy/                   # Dead code
@@ -144,7 +149,7 @@ docs/                     # Session logs, architecture docs
 ## Key Design Decisions
 
 - **All-English codebase**: identifiers, API fields, error messages in English. UI supports EN/TR via i18n.
-- **In-memory call log**: no database; `_CALL_LOG` list resets on restart.
+- **Persistent call log**: JSON file at `data/call_log.json`, survives backend restarts, gitignored.
 - **Dual import paths**: `backend/main.py` handles being run from project root or from within `backend/`.
 - **FFmpeg fallback chain**: explicit env var, then system PATH, then `imageio-ffmpeg` package.
 - **Audio chunking**: 64600 samples (AASIST training window), non-overlapping, silent chunks filtered.
@@ -155,7 +160,7 @@ docs/                     # Session logs, architecture docs
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `AUTH_THRESHOLD` | `0.5` | Fraud detection threshold (below = suspected fraud) |
+| `AUTH_THRESHOLD` | `0.35` | Fraud detection threshold (below = suspected fraud) |
 | `LOCAL_MODEL_DIR` | - | Override model directory path |
 | `LOCAL_WEIGHTS_PATH` | - | Override weights file path |
 | `MODEL_SELFTEST` | - | Set `1` to enable model diagnostic on `/health` |
