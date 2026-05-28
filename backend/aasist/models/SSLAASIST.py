@@ -28,10 +28,13 @@ class SSLModel(nn.Module):
         self.out_dim = 1024
 
     def extract_feat(self, input_data):
-        # Ensure backbone follows input device/dtype
+        # Match TakHemlata's original extract_feat: device/dtype sync + train mode.
+        # train() is intentional in the upstream repo (matches inference behavior
+        # the published weights were tuned against).
         if (next(self.model.parameters()).device != input_data.device
                 or next(self.model.parameters()).dtype != input_data.dtype):
             self.model.to(input_data.device, dtype=input_data.dtype)
+            self.model.train()
 
         if input_data.ndim == 3:
             input_data = input_data[:, :, 0]
