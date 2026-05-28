@@ -87,7 +87,24 @@ class XLSRAASISTModel:
         # Some checkpoints prefix keys with 'module.' (DataParallel)
         if any(k.startswith("module.") for k in state.keys()):
             state = {k.replace("module.", "", 1): v for k, v in state.items()}
-        self._model.load_state_dict(state, strict=False)
+
+        # TakHemlata's checkpoint uses fairseq Wav2Vec2 naming for the XLSR backbone
+        # (under the 'ssl_model.model.' prefix). Remap to HuggingFace Wav2Vec2Model naming.
+        try:
+            from ._fairseq_to_hf_xlsr import convert_xlsr_subkeys
+        except ImportError:
+            from _fairseq_to_hf_xlsr import convert_xlsr_subkeys
+        state = convert_xlsr_subkeys(state, prefix="ssl_model.model.")
+
+        load_report = self._model.load_state_dict(state, strict=False)
+        if load_report.missing_keys:
+            n_missing = len(load_report.missing_keys)
+            print(f"[XLSRAASIST] WARNING: {n_missing} keys missing after remap; first 5:",
+                  load_report.missing_keys[:5])
+        if load_report.unexpected_keys:
+            n_unexp = len(load_report.unexpected_keys)
+            print(f"[XLSRAASIST] WARNING: {n_unexp} unexpected keys; first 5:",
+                  load_report.unexpected_keys[:5])
         self._model.eval()
 
     @staticmethod
