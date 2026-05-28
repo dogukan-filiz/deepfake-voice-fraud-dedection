@@ -11,5 +11,5 @@
   "real_label_id": 1,
   "fake_label_id": 0,
   "weights_file": "weights.pth",
-  "weights_sha256": "TBD-fill-after-download"
+  "weights_sha256": "1cf904f1d84c867c278cd42161df5367939d61cc28bfefd239bc995af59c2804"
 }
