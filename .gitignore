@@ -26,7 +26,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 node_modules/
-/models/
+/models/aasist_baseline/
+/models/aasist_finetuned/
+/models/deepfake_wav2vec2/
+/models/ssl_aasist/*.pth
 !backend/aasist/models/
 *.zip
 *.wav
@@ -216,6 +219,5 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-models/deepfake_wav2vec2/
 .DS_Store
 data/

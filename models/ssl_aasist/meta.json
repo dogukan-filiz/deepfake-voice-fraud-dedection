@@ -1,0 +1,15 @@
+{
+  "name": "ssl_aasist_la",
+  "source": "https://github.com/TakHemlata/SSL_Anti-spoofing",
+  "license": "MIT",
+  "license_attribution": "Copyright (c) Hemlata Tak (tak@eurecom.fr), EURECOM",
+  "backbone": "facebook/wav2vec2-xls-r-300m",
+  "ssl_out_dim": 1024,
+  "input_sample_rate": 16000,
+  "input_window_samples": 64600,
+  "id2label": {"0": "spoof", "1": "bonafide"},
+  "real_label_id": 1,
+  "fake_label_id": 0,
+  "weights_file": "weights.pth",
+  "weights_sha256": "TBD-fill-after-download"
+}
