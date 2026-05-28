@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -7,6 +9,8 @@ class Settings(BaseSettings):
     AUDIO_MIN_DURATION_SEC: float = 2.0
     AUDIO_MIN_PEAK_ABS: float = 5e-4
     AUDIO_MIN_RMS: float = 1e-4
+
+    LOCAL_SSL_MODEL_DIR: Optional[str] = None
 
     class Config:
         env_file = ".env"
