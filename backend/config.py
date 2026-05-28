@@ -4,7 +4,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    AUTH_THRESHOLD: float = 0.35  # Optimal threshold based on evaluation
+    # Fraud threshold on authenticity_score (p_real). Below = suspected fraud.
+    # 0.01 calibrated for SSL+AASIST primary on 50+50 sample set (acc=82.5%).
+    # AASIST baseline fallback uses ~0.35; if you swap primary, retune via
+    # scripts/evaluation/enhanced_evaluate.py.
+    AUTH_THRESHOLD: float = 0.01
 
     AUDIO_MIN_DURATION_SEC: float = 2.0
     AUDIO_MIN_PEAK_ABS: float = 5e-4
