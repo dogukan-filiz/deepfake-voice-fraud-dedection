@@ -66,3 +66,15 @@ def test_wrapper_predict_returns_schema(monkeypatch, tmp_path):
     assert 0.0 <= result["p_real"] <= 1.0
     assert 0.0 <= result["p_fake"] <= 1.0
     assert abs((result["p_real"] + result["p_fake"]) - 1.0) < 1e-5
+
+
+def test_get_model_status_reports_ssl_primary(monkeypatch):
+    import importlib
+    import backend.model_wrapper as mw
+    importlib.reload(mw)
+    monkeypatch.setattr(mw, "_model_instance", None)
+    monkeypatch.setattr(mw, "_model_load_error", None)
+    status = mw.get_model_status()
+    assert status["model_type"] == "ssl_aasist", (
+        f"loader must advertise ssl_aasist as primary, got {status['model_type']}"
+    )
