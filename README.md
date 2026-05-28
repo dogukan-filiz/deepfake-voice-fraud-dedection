@@ -74,11 +74,20 @@ Dashboard:
 
 Vite dev server, `vite.config.mts` icindeki proxy ile `/api/*` isteklerini backend'e yonlendirir.
 
-## Model (Yerel)
+## Model Stack
 
-- **Architecture:** AASIST (raw-waveform graph attention, ~297k params, trained on ASVspoof 2019 LA; in-domain EER ~1.5%)
-- Backend, varsayilan olarak once `models/aasist_baseline` (eger varsa), yoksa `models/aasist_finetuned` altindan model yuklemeyi dener.
-- Farkli bir klasor kullanmak icin ortam degiskeni verin: `LOCAL_MODEL_DIR=...`
+Backend, asagidaki sirayla model yuklemeye calisir (her biri basarisiz olursa bir alttakine duser):
+
+1. **Primary — SSL+AASIST (XLSR-300M + AASIST head):** TakHemlata/SSL_Anti-spoofing
+   (MIT). XLSR-300M frontend (`facebook/wav2vec2-xls-r-300m`, transformers ile
+   yuklenir) + AASIST graph-attention classifier. ASVspoof LA21 EER ~0.82%.
+   - Weights manuel indirilmelidir. Bkz: `models/ssl_aasist/README.md`
+   - Override: `LOCAL_SSL_MODEL_DIR=<path>`
+2. **Fallback — AASIST baseline (clovaai):** raw-waveform graph attention,
+   ~297k params, ASVspoof 2019 LA, in-domain EER ~1.5%. Weights `models/aasist_baseline/`.
+   - Override: `LOCAL_MODEL_DIR=<path>` veya `LOCAL_WEIGHTS_PATH=<file>`
+3. **Last resort — Heuristic:** spektral anomali skoruna sigmoid uygulanir. Model
+   yoksa /analyze yine cevap verir, ama dogruluk dusuk olur.
 
 Metadata uretimi:
 
