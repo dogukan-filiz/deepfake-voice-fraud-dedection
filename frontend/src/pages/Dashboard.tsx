@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   BarChart3, Check, X, AlertTriangle, HelpCircle,
   Upload, Calendar, Mic, Square, ShieldCheck, ShieldAlert, ShieldX, Globe,
@@ -215,9 +215,19 @@ export const Dashboard: React.FC = () => {
   const flaggedCalls = calls.filter(c => c.is_suspected_fraud).length;
   const cleanCalls = totalCalls - flaggedCalls;
 
+  // Display-only rescale: backend AUTH_THRESHOLD (0.01) maps to chart midline (0.5)
+  // so real samples (just above threshold) don't look tiny next to high-confidence ones.
+  // Raw score still shown in tooltip.
+  const DISPLAY_THRESHOLD = 0.01;
+  const rescaleForDisplay = (score: number): number => {
+    if (score <= DISPLAY_THRESHOLD) return (score / DISPLAY_THRESHOLD) * 0.5;
+    return 0.5 + ((score - DISPLAY_THRESHOLD) / (1 - DISPLAY_THRESHOLD)) * 0.5;
+  };
+
   const chartData = [...calls].reverse().map((c) => ({
     time: new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    score: parseFloat(c.authenticity_score.toFixed(3)),
+    score: parseFloat(rescaleForDisplay(c.authenticity_score).toFixed(3)),
+    rawScore: parseFloat(c.authenticity_score.toFixed(3)),
   }));
 
   const miniBars = [...calls].reverse().slice(0, 30).map(c => ({ id: c.call_id, level: c.risk_level, score: c.authenticity_score }));
@@ -310,17 +320,6 @@ export const Dashboard: React.FC = () => {
               <div className="verdict-title">
                 {result.is_suspected_fraud ? t.result.suspectedDeepfake : t.result.appearsGenuine}
               </div>
-              <div className="verdict-subtitle">
-                {result.is_suspected_fraud ? t.result.verdictBannerFraud : t.result.verdictBannerGenuine}
-              </div>
-            </div>
-            <div className="verdict-score">
-              <div className="verdict-score-value">{(result.authenticity_score * 100).toFixed(0)}%</div>
-              <div className="verdict-score-label">{t.result.authenticity}</div>
-            </div>
-            <div className="verdict-score">
-              <div className={`verdict-score-value verdict-risk-color ${result.risk_level}`}>{riskLabel(result.risk_level)}</div>
-              <div className="verdict-score-label">{t.result.riskLevel}</div>
             </div>
           </section>
         )}
@@ -343,8 +342,14 @@ export const Dashboard: React.FC = () => {
                 <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.6} />
                   <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 1]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 8, fontSize: 13, color: '#fff' }} labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }} itemStyle={{ color: '#fff' }} />
+                  <YAxis domain={[0, 1]} ticks={[0, 0.5, 1]} tickFormatter={(v) => v === 0.5 ? 'threshold' : v === 1 ? 'real' : 'fake'} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={70} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 8, fontSize: 13, color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(_v: number, _n: string, item: any) => [item?.payload?.rawScore?.toFixed(3) ?? '-', 'p_real']}
+                  />
+                  <ReferenceLine y={0.5} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.6} />
                   <Line type="monotone" dataKey="score" stroke="#6b7fb8" strokeWidth={2.5} dot={{ r: 4, fill: '#6b7fb8', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} name="Score" />
                 </LineChart>
               </ResponsiveContainer>

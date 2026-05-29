@@ -61,7 +61,7 @@ def analyze_file(file_path):
                 return {
                     'prediction': 'fake' if result['is_suspected_fraud'] else 'real',
                     'probability': result['p_real'],
-                    'confidence': result['confidence'],
+                    'confidence': result.get('confidence', max(result['p_real'], result['p_fake'])),
                     'authenticity_score': result['authenticity_score'],
                     'success': True
                 }
@@ -107,7 +107,7 @@ def calculate_metrics(predictions, actual_labels):
     }
 
 def main():
-    test_dir = r"D:\dataset\for-rerecorded\testing"
+    test_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_audio")
     
     print("🧪 Deepfake Detection Model Comprehensive Test")
     print("=" * 60)
@@ -133,17 +133,18 @@ def main():
         
         result = analyze_file(file_path)
         if result['success']:
+            is_correct = result['prediction'] == actual_label
             results.append({
                 'file': file_path,
                 'actual': actual_label,
                 'predicted': result['prediction'],
                 'probability': result['probability'],
                 'confidence': result['confidence'],
-                'correct': result['prediction'] == actual_label
+                'correct': is_correct
             })
             successful_analyses += 1
-            
-            if result['correct']:
+
+            if is_correct:
                 print(f"   ✅ Correct: {actual_label} → {result['prediction']} (confidence: {result['confidence']:.4f})")
             else:
                 print(f"   ❌ Wrong: {actual_label} → {result['prediction']} (confidence: {result['confidence']:.4f})")
