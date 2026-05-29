@@ -1,0 +1,835 @@
+{
+  "timestamp": "2026-05-29 06:00:37",
+  "total_files": 100,
+  "successful_analyses": 100,
+  "success_rate": 1.0,
+  "metrics": {
+    "accuracy": 0.76,
+    "f1_score": 0.75,
+    "real_metrics": {
+      "precision": 0.9333333333333333,
+      "recall": 0.56,
+      "f1_score": 0.7,
+      "support": 50.0
+    },
+    "fake_metrics": {
+      "precision": 0.6857142857142857,
+      "recall": 0.96,
+      "f1_score": 0.8,
+      "support": 50.0
+    },
+    "confusion_matrix": [
+      [
+        48,
+        2
+      ],
+      [
+        22,
+        28
+      ]
+    ],
+    "total_samples": 100
+  },
+  "detailed_results": [
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_013.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000408,
+      "confidence": 0.999592,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_021.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.00709,
+      "confidence": 0.99291,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_017.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.99978,
+      "confidence": 0.99978,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_036.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00035,
+      "confidence": 0.99965,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_002.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.066113,
+      "confidence": 0.933887,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_016.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000277,
+      "confidence": 0.999723,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_005.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.23631,
+      "confidence": 0.76369,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_048.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.012845,
+      "confidence": 0.987155,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_015.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000245,
+      "confidence": 0.999755,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_049.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000354,
+      "confidence": 0.999646,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_039.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000472,
+      "confidence": 0.999528,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_004.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000596,
+      "confidence": 0.999404,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_044.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000334,
+      "confidence": 0.999666,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_012.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00053,
+      "confidence": 0.99947,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_002.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000458,
+      "confidence": 0.999542,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_010.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.395707,
+      "confidence": 0.604293,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_008.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.001478,
+      "confidence": 0.998522,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_015.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.211051,
+      "confidence": 0.788949,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_025.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000746,
+      "confidence": 0.999254,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_047.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00044,
+      "confidence": 0.99956,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_040.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.010521,
+      "confidence": 0.989479,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_013.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000277,
+      "confidence": 0.999723,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_042.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.001296,
+      "confidence": 0.998704,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_032.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.004,
+      "confidence": 0.996,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_033.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.378655,
+      "confidence": 0.621345,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_000.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000532,
+      "confidence": 0.999468,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_008.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000407,
+      "confidence": 0.999593,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_024.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.038612,
+      "confidence": 0.961388,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_035.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.001112,
+      "confidence": 0.998888,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_043.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.001101,
+      "confidence": 0.998899,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_001.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000395,
+      "confidence": 0.999605,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_006.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000342,
+      "confidence": 0.999658,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_007.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.961033,
+      "confidence": 0.961033,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_026.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.974101,
+      "confidence": 0.974101,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_037.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000392,
+      "confidence": 0.999608,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_030.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.862098,
+      "confidence": 0.862098,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_006.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000706,
+      "confidence": 0.999294,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_038.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000645,
+      "confidence": 0.999355,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_009.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.033655,
+      "confidence": 0.966345,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_031.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.004515,
+      "confidence": 0.995485,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_018.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.898217,
+      "confidence": 0.898217,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_014.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000318,
+      "confidence": 0.999682,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_026.wav",
+      "actual": "fake",
+      "predicted": "real",
+      "probability": 0.305759,
+      "confidence": 0.694241,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_011.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000477,
+      "confidence": 0.999523,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_035.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.301607,
+      "confidence": 0.698393,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_047.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000675,
+      "confidence": 0.999325,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_023.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000775,
+      "confidence": 0.999225,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_045.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00051,
+      "confidence": 0.99949,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_000.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000791,
+      "confidence": 0.999209,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_007.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000315,
+      "confidence": 0.999685,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_039.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.25212,
+      "confidence": 0.74788,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_025.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.001221,
+      "confidence": 0.998779,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_028.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00575,
+      "confidence": 0.99425,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_022.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000475,
+      "confidence": 0.999525,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_020.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.993508,
+      "confidence": 0.993508,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_018.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000295,
+      "confidence": 0.999705,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_022.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000363,
+      "confidence": 0.999637,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_012.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.009721,
+      "confidence": 0.990279,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_042.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000347,
+      "confidence": 0.999653,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_003.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000322,
+      "confidence": 0.999678,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_009.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000374,
+      "confidence": 0.999626,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_044.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000438,
+      "confidence": 0.999562,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_029.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.00118,
+      "confidence": 0.99882,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_003.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.042598,
+      "confidence": 0.957402,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_048.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000379,
+      "confidence": 0.999621,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_027.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000383,
+      "confidence": 0.999617,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_046.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000419,
+      "confidence": 0.999581,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_005.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000475,
+      "confidence": 0.999525,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_036.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000558,
+      "confidence": 0.999442,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_046.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.002159,
+      "confidence": 0.997841,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_014.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.999515,
+      "confidence": 0.999515,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_019.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.001156,
+      "confidence": 0.998844,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_041.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000422,
+      "confidence": 0.999578,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_011.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000362,
+      "confidence": 0.999638,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_020.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.008826,
+      "confidence": 0.991174,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_045.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.299875,
+      "confidence": 0.700125,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_016.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.003758,
+      "confidence": 0.996242,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_028.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.994338,
+      "confidence": 0.994338,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_021.wav",
+      "actual": "fake",
+      "predicted": "real",
+      "probability": 0.377057,
+      "confidence": 0.622943,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_023.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.283586,
+      "confidence": 0.716414,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_030.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.001052,
+      "confidence": 0.998948,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_019.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000278,
+      "confidence": 0.999722,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_032.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000317,
+      "confidence": 0.999683,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_040.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000308,
+      "confidence": 0.999692,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_034.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000412,
+      "confidence": 0.999588,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_010.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000769,
+      "confidence": 0.999231,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_001.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.989077,
+      "confidence": 0.989077,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_027.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.00048,
+      "confidence": 0.99952,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_038.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.292426,
+      "confidence": 0.707574,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_004.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.736275,
+      "confidence": 0.736275,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_049.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.294016,
+      "confidence": 0.705984,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_043.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000753,
+      "confidence": 0.999247,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_037.wav",
+      "actual": "real",
+      "predicted": "fake",
+      "probability": 0.000772,
+      "confidence": 0.999228,
+      "correct": false
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_024.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.001655,
+      "confidence": 0.998345,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_034.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.706337,
+      "confidence": 0.706337,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_031.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000431,
+      "confidence": 0.999569,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\real\\real_041.wav",
+      "actual": "real",
+      "predicted": "real",
+      "probability": 0.194155,
+      "confidence": 0.805845,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_017.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000254,
+      "confidence": 0.999746,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_033.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.000394,
+      "confidence": 0.999606,
+      "correct": true
+    },
+    {
+      "file": "D:\\Workspace\\deepfake-voice-fraud-dedection\\test_audio\\fake\\fake_029.wav",
+      "actual": "fake",
+      "predicted": "fake",
+      "probability": 0.001632,
+      "confidence": 0.998368,
+      "correct": true
+    }
+  ]
+}

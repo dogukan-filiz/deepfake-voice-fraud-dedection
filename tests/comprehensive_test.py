@@ -188,8 +188,8 @@ def main():
         cm = metrics['confusion_matrix']
         print(f"           Predicted")
         print(f"           Real   Fake")
-        print(f"   Real   {cm[0,0]:<6} {cm[0,1]:<6}")
-        print(f"   Fake   {cm[1,0]:<6} {cm[1,1]:<6}")
+        print(f"   Real   {cm[0][0]:<6} {cm[0][1]:<6}")
+        print(f"   Fake   {cm[1][0]:<6} {cm[1][1]:<6}")
         
         print(f"\n✅ Correct Predictions: {correct}")
         print(f"❌ Incorrect Predictions: {len(results) - correct}")

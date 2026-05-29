@@ -1,0 +1,70 @@
+{
+  "passed": 5,
+  "total": 5,
+  "all_passed": true,
+  "cases": [
+    {
+      "case": "format_ogg",
+      "status_code": 200,
+      "passed": true,
+      "body": {
+        "call_id": "call-1780023474.203664",
+        "authenticity_score": 0.999961,
+        "is_suspected_fraud": false,
+        "risk_level": "low",
+        "p_real": 0.999961,
+        "p_fake": 3.9e-05,
+        "spectral_residual": 0.3892781790808297,
+        "num_chunks": 1,
+        "max_chunk_p_fake": 3.9e-05,
+        "timestamp": "2026-05-29T02:57:54.203664Z"
+      }
+    },
+    {
+      "case": "format_webm",
+      "status_code": 200,
+      "passed": true,
+      "body": {
+        "call_id": "call-1780023475.044631",
+        "authenticity_score": 0.999962,
+        "is_suspected_fraud": false,
+        "risk_level": "low",
+        "p_real": 0.999962,
+        "p_fake": 3.8e-05,
+        "spectral_residual": 0.3253063917624577,
+        "num_chunks": 1,
+        "max_chunk_p_fake": 3.8e-05,
+        "timestamp": "2026-05-29T02:57:55.044631Z"
+      }
+    },
+    {
+      "case": "format_m4a",
+      "status_code": 200,
+      "passed": true,
+      "body": {
+        "call_id": "call-1780023475.932923",
+        "authenticity_score": 0.999972,
+        "is_suspected_fraud": false,
+        "risk_level": "low",
+        "p_real": 0.999972,
+        "p_fake": 2.8e-05,
+        "spectral_residual": 0.4641542100049142,
+        "num_chunks": 1,
+        "max_chunk_p_fake": 2.8e-05,
+        "timestamp": "2026-05-29T02:57:55.934428Z"
+      }
+    },
+    {
+      "case": "silence_reject",
+      "status_code": 400,
+      "passed": true,
+      "body": "{\"detail\":\"No audible sound detected in the recording (silence or below threshold).\"}"
+    },
+    {
+      "case": "too_short_reject",
+      "status_code": 400,
+      "passed": true,
+      "body": "{\"detail\":\"Recording too short: 1.00s. Please send at least 2.00s of audio.\"}"
+    }
+  ]
+}
