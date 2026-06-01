@@ -1,3 +1,0 @@
-LA_1234 LA_T_5849 - bonafide train
-LA_5678 LA_T_8193 A01 spoof train
-LA_9012 LA_T_2847 A02 spoof train

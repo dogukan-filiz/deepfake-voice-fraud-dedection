@@ -300,33 +300,21 @@ def _test_audio_root() -> _Path:
     return _Path(__file__).resolve().parents[1] / "test_audio"
 
 
-_AUDIO_EXTS = {".wav", ".flac", ".mp3", ".ogg"}
-
-
-def _find_category_files(root: _Path, category: str) -> list[_Path]:
-    """Return all audio files inside any folder named *category* under root."""
-    return sorted(
-        f for f in root.rglob("*")
-        if f.is_file()
-        and f.suffix.lower() in _AUDIO_EXTS
-        and f.parent.name == category
-    )
-
-
-def _find_test_file(root: _Path, category: str, filename: str) -> _Path | None:
-    for f in root.rglob(filename):
-        if f.parent.name == category:
-            return f
-    return None
-
-
 @app.get("/test-library")
 async def list_test_library():
     """List available test audio files grouped by category."""
     root = _test_audio_root()
     result = {}
     for category in ("real", "fake"):
-        result[category] = sorted(f.name for f in _find_category_files(root, category))
+        d = root / category
+        if d.is_dir():
+            files = sorted(
+                f.name for f in d.iterdir()
+                if f.is_file() and f.suffix.lower() in {".wav", ".flac", ".mp3", ".ogg"}
+            )
+            result[category] = files
+        else:
+            result[category] = []
     return result
 
 
@@ -337,8 +325,8 @@ async def analyze_test_file(category: str, filename: str):
         raise HTTPException(status_code=400, detail="Category must be 'real' or 'fake'")
 
     safe_name = _Path(filename).name
-    filepath = _find_test_file(_test_audio_root(), category, safe_name)
-    if filepath is None:
+    filepath = _test_audio_root() / category / safe_name
+    if not filepath.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {category}/{safe_name}")
 
     raw_bytes = filepath.read_bytes()
