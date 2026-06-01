@@ -5,14 +5,20 @@
         "**/node_modules": true,
         "**/runs": true,
         "**/training_runs": false,
-        "**/models": true
+        "**/models": true,
+        ".claude": true,
+        "CLAUDE.md": true,
+        "AGENTS.md": true
     },
     "search.exclude": {
         "**/.venv": true,
         "**/node_modules": true,
         "**/runs": true,
         "**/training_runs": false,
-        "**/models": true
+        "**/models": true,
+        ".claude": true,
+        "CLAUDE.md": true,
+        "AGENTS.md": true
     },
     "files.watcherExclude": {
         "**/.venv/**": true,
