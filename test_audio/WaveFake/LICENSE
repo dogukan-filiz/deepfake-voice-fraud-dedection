@@ -1,0 +1,13 @@
+WaveFake Dataset
+Copyright (c) 2021 Joel Frank, Lea Schönherr
+Licensed under Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA 4.0)
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Original LJSpeech audio is in the public domain.
+Generated audio is derived from LJSpeech via neural vocoder architectures:
+  HiFi-GAN (Kong et al., 2020) — files in fake/ (suffix _gen.wav)
+
+Reference:
+  Frank, J. & Schönherr, L. (2021). WaveFake: A Data Set to Facilitate
+  Audio DeepFake Detection. NeurIPS Datasets and Benchmarks Track.
+  https://arxiv.org/abs/2111.02813
