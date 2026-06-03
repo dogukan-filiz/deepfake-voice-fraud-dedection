@@ -83,6 +83,8 @@ export const Dashboard: React.FC = () => {
   const [showAllCalls, setShowAllCalls] = useState(false);
 
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing'>('idle');
+  const [recordingElapsed, setRecordingElapsed] = useState(0);
+  const [lastBlobInfo, setLastBlobInfo] = useState<{mime: string; sizeKB: number; durationSec: number | null} | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const recordingModeRef = useRef<'mediarecorder' | 'pcm' | null>(null);
@@ -92,6 +94,8 @@ export const Dashboard: React.FC = () => {
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
   const pcmChunksRef = useRef<Float32Array[]>([]);
   const pcmSampleRateRef = useRef<number | null>(null);
+  const recordingStartRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const api = axios.create({ baseURL: '/api' });
 
@@ -138,12 +142,13 @@ export const Dashboard: React.FC = () => {
     return new Blob([buf], { type: 'audio/wav' });
   };
 
-  const analyzeBlob = async (blob: Blob) => {
+  const analyzeBlob = async (blob: Blob, durationSec?: number) => {
     setRecordingState('processing');
     try {
       if (!blob.size) { setError(t.errors.emptyRecording); return; }
       const mime = (blob.type || '').toLowerCase();
       const ext = mime.includes('ogg') ? 'ogg' : mime.includes('webm') ? 'webm' : mime.includes('wav') ? 'wav' : mime.includes('mp4') ? 'm4a' : 'bin';
+      setLastBlobInfo({ mime: mime || 'unknown', sizeKB: Math.round(blob.size / 1024), durationSec: durationSec ?? null });
       const fd = new FormData();
       fd.append('file', blob, `recording.${ext}`);
       const res = await api.post<PredictionResult>('/analyze', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -161,16 +166,30 @@ export const Dashboard: React.FC = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const canChoose = typeof MediaRecorder !== 'undefined' && 'isTypeSupported' in MediaRecorder;
-      const wavOk = canChoose ? MediaRecorder.isTypeSupported('audio/wav') : false;
-      if (typeof MediaRecorder !== 'undefined' && wavOk) {
-        const mr = new MediaRecorder(stream, { mimeType: 'audio/wav' });
+      if (typeof MediaRecorder !== 'undefined') {
+        // Fallback chain: Chrome/Firefox support webm+opus natively; Safari may fall through to PCM path
+        const MIME_CHAIN = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/wav'];
+        const chosenMime = MIME_CHAIN.find(m => MediaRecorder.isTypeSupported(m)) ?? '';
+        const mrOpts = chosenMime ? { mimeType: chosenMime } : {};
+        const mr = new MediaRecorder(stream, mrOpts);
+        const actualMime = mr.mimeType || chosenMime || 'audio/webm';
         recordingModeRef.current = 'mediarecorder'; recorderRef.current = mr; audioChunksRef.current = [];
+        recordingStartRef.current = Date.now(); setRecordingElapsed(0);
+        timerRef.current = setInterval(() => setRecordingElapsed(Math.floor((Date.now() - (recordingStartRef.current ?? Date.now())) / 1000)), 500);
         mr.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
-        mr.onstop = async () => { const b = new Blob(audioChunksRef.current, { type: 'audio/wav' }); stream.getTracks().forEach(t => t.stop()); streamRef.current = null; await analyzeBlob(b); };
-        mr.start(); setRecordingState('recording'); setError(null); return;
+        mr.onstop = async () => {
+          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          const dur = Math.round((Date.now() - (recordingStartRef.current ?? Date.now())) / 1000);
+          const b = new Blob(audioChunksRef.current, { type: actualMime });
+          stream.getTracks().forEach(t => t.stop()); streamRef.current = null;
+          await analyzeBlob(b, dur);
+        };
+        mr.start(1000); setRecordingState('recording'); setError(null); return;
       }
+      // TODO: Future improvement — replace ScriptProcessor fallback with AudioWorklet.
       recordingModeRef.current = 'pcm'; recorderRef.current = null; audioChunksRef.current = []; pcmChunksRef.current = [];
+      recordingStartRef.current = Date.now(); setRecordingElapsed(0);
+      timerRef.current = setInterval(() => setRecordingElapsed(Math.floor((Date.now() - (recordingStartRef.current ?? Date.now())) / 1000)), 500);
       const AC = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
       if (!AC) { stream.getTracks().forEach(t => t.stop()); streamRef.current = null; setError(t.errors.audioContextUnsupported); return; }
       const ctx = new AC(); audioContextRef.current = ctx; pcmSampleRateRef.current = ctx.sampleRate;
@@ -187,12 +206,14 @@ export const Dashboard: React.FC = () => {
     if (recordingModeRef.current === 'mediarecorder') { recorderRef.current?.stop(); setRecordingState('processing'); return; }
     if (recordingModeRef.current === 'pcm') {
       setRecordingState('processing');
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       try { processorNodeRef.current?.disconnect(); sourceNodeRef.current?.disconnect(); } catch {}
       processorNodeRef.current = null; sourceNodeRef.current = null;
       streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null;
       audioContextRef.current?.close().catch(() => null); audioContextRef.current = null;
       const samples = mergeFloat32(pcmChunksRef.current); pcmChunksRef.current = [];
-      void analyzeBlob(encodeWav16BitMono(samples, pcmSampleRateRef.current ?? 48000));
+      const dur = Math.round((Date.now() - (recordingStartRef.current ?? Date.now())) / 1000);
+      void analyzeBlob(encodeWav16BitMono(samples, pcmSampleRateRef.current ?? 48000), dur);
     }
   };
 
@@ -386,10 +407,18 @@ export const Dashboard: React.FC = () => {
                 <div className={`status-dot ${recordingState}`} />
                 <span>
                   {recordingState === 'idle' && t.recording.ready}
-                  {recordingState === 'recording' && t.recording.recordingStatus}
+                  {recordingState === 'recording' && `${t.recording.recordingStatus} ${recordingElapsed}s`}
                   {recordingState === 'processing' && t.recording.analyzing}
                 </span>
               </div>
+              {lastBlobInfo && recordingState === 'idle' && (
+                <div className="blob-debug" style={{fontSize:'0.7rem',color:'#64748b',marginTop:'0.25rem',display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+                  <span>{lastBlobInfo.mime || 'unknown'}</span>
+                  <span>·</span>
+                  <span>{lastBlobInfo.sizeKB} KB</span>
+                  {lastBlobInfo.durationSec !== null && <><span>·</span><span>{lastBlobInfo.durationSec}s</span></>}
+                </div>
+              )}
             </div>
             {health && (
               <div className="system-info">

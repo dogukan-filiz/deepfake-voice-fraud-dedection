@@ -270,6 +270,12 @@ async def health_check():
         "model": model_status,
         "pid": os.getpid(),
         "module_file": __file__,
+        "auth_threshold": settings.AUTH_THRESHOLD,
+        "audio": {
+            "sample_rate": 16000,
+            "min_duration_sec": settings.AUDIO_MIN_DURATION_SEC,
+            "accepted_formats": ["wav", "flac", "webm", "ogg", "mp4", "m4a"],
+        },
     }
 
     if os.getenv("MODEL_SELFTEST", "").strip() in {"1", "true", "True", "YES", "yes"}:
