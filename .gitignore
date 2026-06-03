@@ -37,6 +37,7 @@ node_modules/
 /models/aasist_finetuned/
 /models/deepfake_wav2vec2/
 /models/ssl_aasist/*.pth
+/models/ssl_aasist_staging_full_run_002/
 !backend/aasist/models/
 *.zip
 *.wav
