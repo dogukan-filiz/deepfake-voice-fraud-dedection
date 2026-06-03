@@ -228,3 +228,6 @@ marimo/_lsp/
 __marimo__/
 .DS_Store
 data/
+
+# Training epoch checkpoints (keep only best_head.pth)
+training_runs/*/checkpoint_epoch_*.pth

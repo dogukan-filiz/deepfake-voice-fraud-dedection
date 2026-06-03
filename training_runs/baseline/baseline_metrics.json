@@ -1,0 +1,23 @@
+{
+  "n_real": 50,
+  "n_fake": 50,
+  "n_errors": 0,
+  "auc_roc": 0.889,
+  "best_threshold": 0.01,
+  "best_macro_f1": 0.75,
+  "real_recall_at_best": 0.56,
+  "fake_recall_at_best": 0.96,
+  "precision_real_at_best": 0.9333,
+  "precision_fake_at_best": 0.6857,
+  "confusion_matrix_fake0_real1": [
+    [
+      48,
+      2
+    ],
+    [
+      22,
+      28
+    ]
+  ],
+  "current_auth_threshold": 0.01
+}
