@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     # Point directly at a weights file (overrides model dir / weights.pth lookup).
     LOCAL_SSL_WEIGHTS_PATH: Optional[str] = None
 
+    # Model backend selector:
+    #   auto      - try chain: ssl_aasist -> df_arena -> aasist -> heuristic
+    #   ssl_aasist - XLSR-300M + AASIST head (local weights.pth required)
+    #   df_arena  - Speech-Arena-2025/DF_Arena_1B_V_1 (auto-downloads from HF)
+    #   aasist    - vanilla AASIST baseline (local weights)
+    #   heuristic - spectral-anomaly sigmoid (no ML)
+    MODEL_BACKEND: str = "auto"
+
     # Call-center normalization pipeline.
     # Set CALL_CHANNEL_MODE=true to apply telephony preprocessing before inference.
     CALL_CHANNEL_MODE: bool = False

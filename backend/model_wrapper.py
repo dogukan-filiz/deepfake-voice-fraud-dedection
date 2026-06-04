@@ -255,6 +255,9 @@ def get_model_status() -> Dict:
         model_info["model_type"] = "aasist_fallback"
     elif t == "HeuristicFallbackModel":
         model_info["model_type"] = "heuristic_fallback"
+    elif t == "DFArenaModel":
+        model_info["model_type"] = "df_arena"
+        model_info["backbone"] = "Speech-Arena-2025/DF_Arena_1B_V_1"
 
     status: Dict[str, Any] = {
         "loaded": True,
@@ -271,36 +274,64 @@ def get_model_status() -> Dict:
     return status
 
 
+def _load_ssl_aasist() -> Any:
+    try:
+        from .model_wrapper_ssl import XLSRAASISTModel  # type: ignore
+    except ImportError:
+        from model_wrapper_ssl import XLSRAASISTModel  # type: ignore
+    return XLSRAASISTModel()
+
+
+def _load_df_arena() -> Any:
+    try:
+        from .model_wrapper_df_arena import DFArenaModel  # type: ignore
+    except ImportError:
+        from model_wrapper_df_arena import DFArenaModel  # type: ignore
+    return DFArenaModel()
+
+
+_BACKENDS: Dict[str, Any] = {
+    "ssl_aasist": ("SSL+AASIST (XLSR-300M + AASIST head)", _load_ssl_aasist),
+    "df_arena": ("DF Arena 1B (Speech-Arena-2025)", _load_df_arena),
+    "aasist": ("AASIST baseline", DeepfakeVoiceModel),
+    "heuristic": ("heuristic spectral fallback", HeuristicFallbackModel),
+}
+
+_AUTO_CHAIN = ["ssl_aasist", "df_arena", "aasist", "heuristic"]
+
+
 def get_model() -> Any:
     global _model_instance, _model_load_error
     if _model_instance is not None:
         return _model_instance
 
-    # Primary: SSL+AASIST (XLSR-300M + AASIST head)
     try:
-        from .model_wrapper_ssl import XLSRAASISTModel  # type: ignore
+        from .config import settings  # type: ignore
     except ImportError:
-        from model_wrapper_ssl import XLSRAASISTModel  # type: ignore
+        from config import settings  # type: ignore
 
-    try:
-        _model_instance = XLSRAASISTModel()
-        _model_load_error = None
-        print("[MODEL] Loaded SSL+AASIST (XLSR-300M + AASIST head) as primary")
-        return _model_instance
-    except Exception as e:
-        ssl_err = f"SSL+AASIST load failed: {type(e).__name__}: {e}"
-        print("[MODEL]", ssl_err)
+    backend = (settings.MODEL_BACKEND or "auto").strip().lower()
+    chain = _AUTO_CHAIN if backend == "auto" else [backend]
+    if backend != "auto" and backend not in _BACKENDS:
+        raise ValueError(
+            f"Unknown MODEL_BACKEND '{backend}'. Valid: auto, {', '.join(_BACKENDS)}"
+        )
 
-    # Fallback: vanilla AASIST baseline
-    try:
-        _model_instance = DeepfakeVoiceModel()
-        _model_load_error = ssl_err
-        print("[MODEL] Falling back to AASIST baseline")
-        return _model_instance
-    except Exception as e2:
-        aasist_err = f"AASIST load failed: {type(e2).__name__}: {e2}"
-        _model_instance = HeuristicFallbackModel()
-        _model_load_error = f"{ssl_err}; {aasist_err}"
-        print("[MODEL] Falling back to heuristic model.")
-        print("[MODEL]", _model_load_error)
-        return _model_instance
+    errors: list[str] = []
+    for name in chain:
+        desc, loader = _BACKENDS[name]
+        try:
+            _model_instance = loader()
+            _model_load_error = "; ".join(errors) or None
+            print(f"[MODEL] Loaded {desc} (backend={name})")
+            return _model_instance
+        except Exception as e:
+            err = f"{name} load failed: {type(e).__name__}: {e}"
+            errors.append(err)
+            print("[MODEL]", err)
+
+    # Heuristic never raises, but keep a hard floor anyway.
+    _model_instance = HeuristicFallbackModel()
+    _model_load_error = "; ".join(errors)
+    print("[MODEL] All backends failed; using heuristic floor.", _model_load_error)
+    return _model_instance

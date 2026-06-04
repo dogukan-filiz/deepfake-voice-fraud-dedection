@@ -17,6 +17,7 @@ try:
     from backend.schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
     from backend.config import settings
     from backend.call_channel import normalize_audio as _normalize_audio
+    from backend.preprocess import preprocess_waveform as _preprocess_waveform
     _UVICORN_APP_PATH = "backend.main:app"
 except ModuleNotFoundError:
     from audio_processing import (
@@ -28,18 +29,24 @@ except ModuleNotFoundError:
     from schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
     from config import settings
     from call_channel import normalize_audio as _normalize_audio
+    from preprocess import preprocess_waveform as _preprocess_waveform
     _UVICORN_APP_PATH = "main:app"
 
 
 def _apply_call_normalization(features: dict) -> dict:
-    """Apply call-channel normalization in-place if CALL_CHANNEL_MODE is enabled."""
-    if not settings.CALL_CHANNEL_MODE:
-        return features
-    import numpy as np
+    """Prepare decoded audio for inference.
+
+    Always applies the OOD preprocessing pipeline (DC removal, high-pass,
+    silence trim, RMS loudness normalization) so uploads / mic recordings /
+    voice notes land closer to the training distribution. Optionally applies
+    telephony call-channel normalization on top when CALL_CHANNEL_MODE is set.
+    """
     waveform = features["waveform"]
     sr = int(features["sr"])
-    normalized = _normalize_audio(waveform, sr, profile=settings.CALL_PROFILE)
-    return {**features, "waveform": normalized, "sr": sr}
+    waveform = _preprocess_waveform(waveform, sr)
+    if settings.CALL_CHANNEL_MODE:
+        waveform = _normalize_audio(waveform, sr, profile=settings.CALL_PROFILE)
+    return {**features, "waveform": waveform, "sr": sr}
 
 
 app = FastAPI(title="Bank Call Center Deepfake Voice Detection API")
