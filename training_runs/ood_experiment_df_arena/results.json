@@ -1,0 +1,93 @@
+{
+  "threshold": 0.5,
+  "preprocess": false,
+  "model_status": {
+    "loaded": "True",
+    "type": "DFArenaModel",
+    "error": "None",
+    "model_type": "df_arena",
+    "backbone": "Speech-Arena-2025/DF_Arena_1B_V_1",
+    "id2label": "{0: 'spoof', 1: 'bonafide'}",
+    "real_label_id": "1",
+    "fake_label_id": "0"
+  },
+  "summary": {
+    "original": {
+      "desc": "unmodified",
+      "n": 40,
+      "real_p_real_mean": 0.9674,
+      "fake_p_real_mean": 0.2129,
+      "mean_p_real_shift": 0.0,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 3,
+      "fake_miss_rate": 0.15
+    },
+    "opus_24k": {
+      "desc": "WhatsApp voice note sim (libopus 24kbps round-trip)",
+      "n": 40,
+      "real_p_real_mean": 0.9609,
+      "fake_p_real_mean": 0.1191,
+      "mean_p_real_shift": -0.0501,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 2,
+      "fake_miss_rate": 0.1
+    },
+    "opus_12k": {
+      "desc": "Poor-network voice note (libopus 12kbps round-trip)",
+      "n": 40,
+      "real_p_real_mean": 0.8469,
+      "fake_p_real_mean": 0.1051,
+      "mean_p_real_shift": -0.1141,
+      "real_flagged_as_fraud": 1,
+      "real_false_alarm_rate": 0.05,
+      "fake_missed_as_clean": 2,
+      "fake_miss_rate": 0.1
+    },
+    "gain_minus12": {
+      "desc": "Quiet headset mic (-12 dB)",
+      "n": 40,
+      "real_p_real_mean": 0.9827,
+      "fake_p_real_mean": 0.3973,
+      "mean_p_real_shift": 0.0998,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 6,
+      "fake_miss_rate": 0.3
+    },
+    "gain_plus6": {
+      "desc": "Hot mic (+6 dB, clipping allowed)",
+      "n": 40,
+      "real_p_real_mean": 0.9459,
+      "fake_p_real_mean": 0.0992,
+      "mean_p_real_shift": -0.0676,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 0,
+      "fake_miss_rate": 0.0
+    },
+    "headset_sim": {
+      "desc": "Consumer headset response (HP 100Hz, LP 7kHz) + light noise",
+      "n": 40,
+      "real_p_real_mean": 0.9677,
+      "fake_p_real_mean": 0.4314,
+      "mean_p_real_shift": 0.1094,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 7,
+      "fake_miss_rate": 0.35
+    },
+    "resample_8k": {
+      "desc": "Narrowband 8kHz round-trip",
+      "n": 40,
+      "real_p_real_mean": 0.9642,
+      "fake_p_real_mean": 0.1263,
+      "mean_p_real_shift": -0.0449,
+      "real_flagged_as_fraud": 0,
+      "real_false_alarm_rate": 0.0,
+      "fake_missed_as_clean": 2,
+      "fake_miss_rate": 0.1
+    }
+  }
+}
