@@ -171,6 +171,8 @@ def main() -> None:
                         help="apply backend.preprocess pipeline before scoring")
     parser.add_argument("--regen", action="store_true",
                         help="regenerate degraded files even if present")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="max files per label (quick pass)")
     args = parser.parse_args()
 
     exe = ffmpeg_exe()
@@ -181,7 +183,10 @@ def main() -> None:
     sources: list[tuple[str, Path]] = []
     for label in ("real", "fake"):
         d = ROOT / "test_audio" / label
-        sources += [(label, p) for p in sorted(d.glob("*.wav"))]
+        files = sorted(d.glob("*.wav"))
+        if args.limit:
+            files = files[: args.limit]
+        sources += [(label, p) for p in files]
     if not sources:
         raise SystemExit("test_audio/real|fake empty - nothing to do")
 
@@ -206,8 +211,10 @@ def main() -> None:
     rows: list[dict] = []
     conditions = ["original"] + list(args.variants)
     for cond in conditions:
-        print(f"[score] {cond}")
-        for label, src in sources:
+        print(f"[score] {cond}", flush=True)
+        for n, (label, src) in enumerate(sources):
+            if n % 10 == 0:
+                print(f"  {cond}: {n}/{len(sources)}", flush=True)
             path = src if cond == "original" else degraded_root / cond / label / src.name
             try:
                 out = score_file(model, path, args.preprocess)

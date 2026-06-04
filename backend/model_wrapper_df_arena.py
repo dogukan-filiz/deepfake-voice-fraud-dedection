@@ -38,9 +38,16 @@ class DFArenaModel:
         self.real_label_id: int = 1
         self.fake_label_id: int = 0
 
+        # Load from a full local snapshot. transformers' dynamic-module fetch
+        # misses relative imports (conformer.py) when given just the model id,
+        # so snapshot_download first ensures every repo file is present.
+        from huggingface_hub import snapshot_download
+
+        local_dir = snapshot_download(MODEL_ID)
+
         self._pipe = pipeline(
             "antispoofing",
-            model=MODEL_ID,
+            model=local_dir,
             trust_remote_code=True,
             device=resolved_device,
         )
