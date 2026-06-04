@@ -1,0 +1,12 @@
+{
+  "run_name": "full_run_004",
+  "checkpoint_epoch": 1,
+  "threshold_candidate": 0.47,
+  "model_type": "XLSRAASISTModel",
+  "backbone": "facebook/wav2vec2-xls-r-300m",
+  "head": "AASIST",
+  "product_mode": "call_center_normalized",
+  "call_profile": "narrowband_g711",
+  "sha256": "ff6f9baf87c6b39bf1b5e569a42c32d5f31e9396e1ca3548fb9d4fd574c91d08",
+  "status": "candidate \u2014 not promoted"
+}

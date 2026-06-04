@@ -16,6 +16,7 @@ try:
     from backend.model_wrapper import get_model, get_model_status
     from backend.schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
     from backend.config import settings
+    from backend.call_channel import normalize_audio as _normalize_audio
     _UVICORN_APP_PATH = "backend.main:app"
 except ModuleNotFoundError:
     from audio_processing import (
@@ -26,7 +27,19 @@ except ModuleNotFoundError:
     from model_wrapper import get_model, get_model_status
     from schemas import PredictionResult, CallRecord, FeedbackRequest, calculate_risk_level
     from config import settings
+    from call_channel import normalize_audio as _normalize_audio
     _UVICORN_APP_PATH = "main:app"
+
+
+def _apply_call_normalization(features: dict) -> dict:
+    """Apply call-channel normalization in-place if CALL_CHANNEL_MODE is enabled."""
+    if not settings.CALL_CHANNEL_MODE:
+        return features
+    import numpy as np
+    waveform = features["waveform"]
+    sr = int(features["sr"])
+    normalized = _normalize_audio(waveform, sr, profile=settings.CALL_PROFILE)
+    return {**features, "waveform": normalized, "sr": sr}
 
 
 app = FastAPI(title="Bank Call Center Deepfake Voice Detection API")
@@ -147,6 +160,8 @@ async def analyze_call(file: UploadFile = File(...)):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    features = _apply_call_normalization(features)
 
     model = get_model()
     model_out = model.predict(features)
@@ -270,12 +285,11 @@ async def health_check():
         "model": model_status,
         "pid": os.getpid(),
         "module_file": __file__,
-        "auth_threshold": settings.AUTH_THRESHOLD,
-        "audio": {
-            "sample_rate": 16000,
-            "min_duration_sec": settings.AUDIO_MIN_DURATION_SEC,
-            "accepted_formats": ["wav", "flac", "webm", "ogg", "mp4", "m4a"],
-        },
+        "threshold": THRESHOLD,
+        "call_channel_mode": settings.CALL_CHANNEL_MODE,
+        "call_profile": settings.CALL_PROFILE,
+        "active_weights_path": str(settings.LOCAL_SSL_WEIGHTS_PATH or "default (model_dir/weights.pth)"),
+        "sample_rate": 16000,
     }
 
     if os.getenv("MODEL_SELFTEST", "").strip() in {"1", "true", "True", "YES", "yes"}:
@@ -355,6 +369,8 @@ async def analyze_test_file(category: str, filename: str):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    features = _apply_call_normalization(features)
 
     model = get_model()
     model_out = model.predict(features)

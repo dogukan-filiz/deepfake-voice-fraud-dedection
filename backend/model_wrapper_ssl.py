@@ -15,6 +15,8 @@ _AASIST_DIR = Path(__file__).resolve().parent / "aasist"
 if str(_AASIST_DIR) not in sys.path:
     sys.path.insert(0, str(_AASIST_DIR))
 
+from .config import settings  # noqa: E402
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -73,30 +75,47 @@ class XLSRAASISTModel:
 
         self._model = SSLAASISTNet(device=self.device).to(self.device)
 
-        weights_path = self.model_dir / "weights.pth"
-        self.weights_path = weights_path
-        if not weights_path.exists():
+        # Always load TakHemlata's full checkpoint first (provides SSL backbone + base AASIST head).
+        # LOCAL_SSL_WEIGHTS_PATH, if set, overrides only the AASIST head on top of this.
+        base_weights_path = self.model_dir / "weights.pth"
+        self.weights_path = base_weights_path
+        if not base_weights_path.exists():
             raise FileNotFoundError(
-                f"SSL+AASIST weights file not found: {weights_path}. "
+                f"SSL+AASIST weights file not found: {base_weights_path}. "
                 f"See {self.model_dir / 'README.md'} for download instructions."
             )
 
-        state = torch.load(weights_path, map_location=self.device)
-        if isinstance(state, dict) and "state_dict" in state:
-            state = state["state_dict"]
-        # Some checkpoints prefix keys with 'module.' (DataParallel)
-        if any(k.startswith("module.") for k in state.keys()):
-            state = {k.replace("module.", "", 1): v for k, v in state.items()}
-
-        # TakHemlata's checkpoint uses fairseq Wav2Vec2 naming for the XLSR backbone
-        # (under the 'ssl_model.model.' prefix). Remap to HuggingFace Wav2Vec2Model naming.
         try:
             from ._fairseq_to_hf_xlsr import convert_xlsr_subkeys
         except ImportError:
             from _fairseq_to_hf_xlsr import convert_xlsr_subkeys
-        state = convert_xlsr_subkeys(state, prefix="ssl_model.model.")
 
-        load_report = self._model.load_state_dict(state, strict=False)
+        def _load_state(path: Path) -> dict:
+            s = torch.load(path, map_location=self.device)
+            if isinstance(s, dict) and "model_state_dict" in s:
+                s = s["model_state_dict"]
+            elif isinstance(s, dict) and "state_dict" in s:
+                s = s["state_dict"]
+            if isinstance(s, dict) and any(k.startswith("module.") for k in s.keys()):
+                s = {k.replace("module.", "", 1): v for k, v in s.items()}
+            return s
+
+        # Step 1: load base checkpoint (TakHemlata) — sets SSL backbone + default AASIST head
+        base_state = _load_state(base_weights_path)
+        # TakHemlata's checkpoint uses fairseq Wav2Vec2 naming for the XLSR backbone
+        # (under the 'ssl_model.model.' prefix). Remap to HuggingFace Wav2Vec2Model naming.
+        base_state = convert_xlsr_subkeys(base_state, prefix="ssl_model.model.")
+        load_report = self._model.load_state_dict(base_state, strict=False)
+
+        # Step 2: if LOCAL_SSL_WEIGHTS_PATH is set, override AASIST head with fine-tuned weights
+        _head_override = settings.LOCAL_SSL_WEIGHTS_PATH
+        if _head_override:
+            head_path = Path(_head_override) if Path(_head_override).is_absolute() else Path(__file__).parent.parent / _head_override
+            self.weights_path = head_path
+            if not head_path.exists():
+                raise FileNotFoundError(f"LOCAL_SSL_WEIGHTS_PATH file not found: {head_path}")
+            head_state = _load_state(head_path)
+            load_report = self._model.load_state_dict(head_state, strict=False)
         if load_report.missing_keys:
             n_missing = len(load_report.missing_keys)
             print(f"[XLSRAASIST] WARNING: {n_missing} keys missing after remap; first 5:",

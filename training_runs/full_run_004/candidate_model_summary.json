@@ -1,0 +1,92 @@
+{
+  "run_name": "full_run_004",
+  "checkpoint_path": "/workspace/deepfake-voice-fraud-dedection/training_runs/full_run_004/best_head.pth",
+  "checkpoint_epoch": 1,
+  "checkpoint_sha256": "ff6f9baf87c6b39bf1b5e569a42c32d5f31e9396e1ca3548fb9d4fd574c91d08",
+  "threshold_candidate": 0.47,
+  "model_type": "XLSRAASISTModel",
+  "backbone": "facebook/wav2vec2-xls-r-300m (frozen)",
+  "head": "AASIST graph-attention (447K params)",
+  "training_metadata_path": "/workspace/deepfake-voice-fraud-dedection/training_runs/full_run_004/metadata_v4_clean.csv",
+  "recommended_product_mode": "call_center_normalized",
+  "recommended_call_profile": "narrowband_g711",
+  "evaluation_summary": {
+    "raw_digital": {
+      "macro_f1": 0.6484,
+      "real_recall": 0.98,
+      "fake_recall": 0.38,
+      "auc": 0.9184
+    },
+    "callnorm_digital_g711": {
+      "macro_f1": 0.5464,
+      "real_recall": 0.9,
+      "fake_recall": 0.28,
+      "auc": 0.7644
+    },
+    "callnorm_digital_opus": {
+      "macro_f1": 0.6956,
+      "real_recall": 0.82,
+      "fake_recall": 0.58,
+      "auc": 0.796
+    },
+    "raw_mic": {
+      "macro_f1": 0.5417,
+      "real_recall": 0.8824,
+      "fake_recall": 0.2,
+      "auc": 0.7529
+    },
+    "callnorm_mic_g711": {
+      "macro_f1": 0.8854,
+      "real_recall": 0.8824,
+      "fake_recall": 1.0,
+      "auc": 0.9294
+    },
+    "callnorm_mic_opus": {
+      "macro_f1": 0.6857,
+      "real_recall": 0.7059,
+      "fake_recall": 0.8,
+      "auc": 0.8235
+    }
+  },
+  "limitations": [
+    "Trained on call-normalized audio only \u2014 raw audio performance is secondary",
+    "Digital call-norm fake_recall at thr=0.47: g711=0.28 (high FP on digital fakes near threshold)",
+    "Opus mode: tighter separation, less reliable than G711 for mic domain",
+    "Only 5 fake_replayed samples in mic holdout \u2014 mic fake detection not statistically robust",
+    "Raw digital fake detection degraded vs full_run_003 (AUC 0.918 vs 1.0)",
+    "Early stopped at epoch 1 due to overfit \u2014 candidate for full_run_004b with lower LR"
+  ],
+  "comparison": {
+    "full_run_002_digital": {
+      "macro_f1": 1.0,
+      "real_recall": 1.0,
+      "fake_recall": 1.0,
+      "auc": 1.0,
+      "note": "digital-only training"
+    },
+    "full_run_003_digital": {
+      "macro_f1": 0.96,
+      "real_recall": 0.94,
+      "fake_recall": 0.98,
+      "auc": 0.997
+    },
+    "full_run_003_mic": {
+      "macro_f1": 0.305,
+      "real_recall": 0.118,
+      "fake_recall": 1.0,
+      "auc": 0.765
+    },
+    "full_run_004_ep1_callnorm_mic_g711": {
+      "macro_f1": 0.885,
+      "real_recall": 0.882,
+      "fake_recall": 1.0,
+      "auc": 0.929
+    }
+  },
+  "evaluation_date": "2026-06-03",
+  "evaluation_files": {
+    "json": "/workspace/deepfake-voice-fraud-dedection/training_runs/full_run_004/final_candidate_eval.json",
+    "csv": "/workspace/deepfake-voice-fraud-dedection/training_runs/full_run_004/final_candidate_eval.csv",
+    "md": "/workspace/deepfake-voice-fraud-dedection/training_runs/full_run_004/final_candidate_eval.md"
+  }
+}

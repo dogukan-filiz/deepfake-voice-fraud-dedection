@@ -232,3 +232,12 @@ data/
 
 # Training epoch checkpoints (keep only best_head.pth)
 training_runs/*/checkpoint_epoch_*.pth
+
+# Large model dirs (full weights, not head overrides)
+models/ssl_aasist_runpod_base_full_run_004/
+
+# Temporary / local-only
+runpod_export/
+local_restore_backup_*/
+.tmp/
+.cache/
