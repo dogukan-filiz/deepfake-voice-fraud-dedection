@@ -97,6 +97,67 @@ export const Dashboard: React.FC = () => {
   const recordingStartRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Analysis progress bar.
+  // Phase 1 (0->75%): fills over a time proportional to audio duration.
+  // Phase 2 (75->100%): races to full once the backend result actually arrives,
+  // so the bar never claims "done" before the analysis is truly complete.
+  const [progress, setProgress] = useState(0);
+  const [progressActive, setProgressActive] = useState(false);
+  const progressRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const doneRef = useRef(false);
+
+  const setProg = (v: number) => { progressRef.current = v; setProgress(v); };
+
+  // Read audio duration (seconds) from a Blob/File via metadata. Resolves null on failure.
+  const getAudioDuration = (file: Blob): Promise<number | null> => new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const a = new Audio();
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(isFinite(a.duration) ? a.duration : null); };
+      a.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      a.src = url;
+    } catch { resolve(null); }
+  });
+
+  const startProgress = (estSec: number | null) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    doneRef.current = false;
+    setProgressActive(true);
+    setProg(0);
+    // Phase 1 duration tracks expected inference time (~0.13s per second of
+    // audio: chunked at 4.04s/chunk, ~0.5s inference each). Clamped to [0.8s, 30s]
+    // so the bar reaches ~75% around when the real result arrives, not before.
+    const dur = Math.min(30000, Math.max(800, (estSec ?? 3) * 130));
+    const start = performance.now();
+    const tick = (now: number) => {
+      if (doneRef.current) return;
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 2); // ease-out
+      const v = eased * 75;
+      if (v > progressRef.current) setProg(v);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else setProg(75); // hold at 75 until the result arrives
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  };
+
+  const finishProgress = () => {
+    doneRef.current = true;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    const from = progressRef.current;
+    const start = performance.now();
+    const dur = 400;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      setProg(from + (100 - from) * t);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else setTimeout(() => { setProgressActive(false); setProg(0); }, 300);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  };
+
   const api = axios.create({ baseURL: '/api' });
 
   const fetchCalls = async () => {
@@ -144,6 +205,7 @@ export const Dashboard: React.FC = () => {
 
   const analyzeBlob = async (blob: Blob, durationSec?: number) => {
     setRecordingState('processing');
+    startProgress(durationSec ?? null);
     try {
       if (!blob.size) { setError(t.errors.emptyRecording); return; }
       const mime = (blob.type || '').toLowerCase();
@@ -159,7 +221,7 @@ export const Dashboard: React.FC = () => {
         const detail = e.response?.data?.detail as string | undefined;
         setError(detail ?? (e.response ? t.errors.analysisFailed(e.response.status) : t.errors.backendUnreachable));
       } else { setError(t.errors.generic); }
-    } finally { setRecordingState('idle'); }
+    } finally { finishProgress(); setRecordingState('idle'); }
   };
 
   const startRecording = async () => {
@@ -222,6 +284,7 @@ export const Dashboard: React.FC = () => {
   const handleUpload = async () => {
     if (!selectedFile) return;
     setLoading(true); setError(null);
+    startProgress(await getAudioDuration(selectedFile));
     try {
       const fd = new FormData(); fd.append('file', selectedFile);
       const res = await api.post<PredictionResult>('/analyze', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -229,7 +292,7 @@ export const Dashboard: React.FC = () => {
     } catch (e: any) {
       if (axios.isAxiosError(e)) setError(e.response?.data?.detail ?? t.errors.analysisFailed(e.response?.status ?? '??'));
       else setError(t.errors.generic);
-    } finally { setLoading(false); }
+    } finally { finishProgress(); setLoading(false); }
   };
 
   const totalCalls = calls.length;
@@ -275,6 +338,7 @@ export const Dashboard: React.FC = () => {
   const analyzeTestFile = async (category: 'real' | 'fake', filename: string) => {
     const key = `${category}/${filename}`;
     setLibraryLoading(key);
+    startProgress(null); // test-library duration unknown -> default estimate
     try {
       const res = await api.post<PredictionResult>(`/analyze-test?category=${category}&filename=${encodeURIComponent(filename)}`);
       setResult(res.data);
@@ -288,6 +352,7 @@ export const Dashboard: React.FC = () => {
         setError(t.errors.generic);
       }
     } finally {
+      finishProgress();
       setLibraryLoading(null);
     }
   };
@@ -331,6 +396,19 @@ export const Dashboard: React.FC = () => {
 
       {/* Dashboard */}
       <div className="dashboard">
+        {/* Analysis progress bar */}
+        {progressActive && (
+          <div className="analyze-progress" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="analyze-progress-head">
+              <span>{t.upload.analyzeLoading}</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <div className="analyze-progress-track">
+              <div className="analyze-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+
         {/* Verdict Banner - visible immediately after analysis */}
         {result && (
           <section className={`verdict-banner ${result.is_suspected_fraud ? 'fraud' : 'genuine'}`}>

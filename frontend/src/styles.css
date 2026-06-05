@@ -175,6 +175,38 @@ body {
 
 /* ---- Verdict Banner ---- */
 
+.analyze-progress {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 1rem 1.5rem;
+  animation: bannerIn 0.3s ease-out;
+}
+
+.analyze-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.analyze-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--input-bg);
+  overflow: hidden;
+}
+
+.analyze-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+}
+
 .verdict-banner {
   display: flex;
   align-items: center;
