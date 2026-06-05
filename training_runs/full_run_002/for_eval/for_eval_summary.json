@@ -1,0 +1,60 @@
+{
+  "model": "full_run_002",
+  "threshold": 0.49,
+  "call_channel_mode": false,
+  "active_weights": "training_runs/full_run_002/best_head.pth",
+  "per_class": 200,
+  "elapsed_sec": 958.2,
+  "domains": [
+    {
+      "domain": "for_original",
+      "n": 399,
+      "errors": 1,
+      "accuracy": 0.8321,
+      "macro_f1": 0.8292,
+      "real_recall": 0.7035,
+      "fake_recall": 0.96,
+      "confusion": {
+        "TP": 192,
+        "TN": 140,
+        "FP": 59,
+        "FN": 8
+      },
+      "real_p_real": {
+        "mean": 0.6318,
+        "min": 0.0266,
+        "max": 0.9841
+      },
+      "fake_p_real": {
+        "mean": 0.0828,
+        "min": 0.0084,
+        "max": 0.9417
+      }
+    },
+    {
+      "domain": "for_rerecorded",
+      "n": 400,
+      "errors": 0,
+      "accuracy": 0.555,
+      "macro_f1": 0.4511,
+      "real_recall": 0.12,
+      "fake_recall": 0.99,
+      "confusion": {
+        "TP": 198,
+        "TN": 24,
+        "FP": 176,
+        "FN": 2
+      },
+      "real_p_real": {
+        "mean": 0.238,
+        "min": 0.0321,
+        "max": 0.8878
+      },
+      "fake_p_real": {
+        "mean": 0.1253,
+        "min": 0.0289,
+        "max": 0.5744
+      }
+    }
+  ]
+}
