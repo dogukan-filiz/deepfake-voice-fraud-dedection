@@ -1,147 +1,120 @@
-# HANDOFF — MongoDB Persistence for Analysis Outputs
+# HANDOFF — Persistence + Analysis History + Spoken Result
 
-> Son güncelleme: 2026-06-06. Sonraki agent bu dosyayı okuyup devam edebilir.
-> Proje: `D:\Workspace\deepfake-voice-fraud-dedection` (Windows local). MacBook'ta da çalışacak.
-
----
-
-## Goal
-
-Danışman hocanın geliştirme önerisi #1: **ses analizi çıktılarını bir veritabanında sakla.**
-Karar: **MongoDB** kullanılacak (kullanıcı seçti). Hem Windows hem MacBook'ta çalışmalı.
-Hedef: "git sync yapar yapmaz çalışan uygulama" — Mongo yoksa bile uygulama çökmemeli (graceful fallback).
+> Son güncelleme: 2026-06-07 (macOS). Önceki agent'ın bıraktığı MongoDB görevi + 2 ek
+> danışman görevi tamamlandı. Bu dosya neyin yapıldığını ve nasıl çalıştırılacağını anlatır.
+> Repo (mac): `/Users/dogukanfiliz/Documents/Workspace/deepfake-voice-fraud-dedection`.
 
 ---
 
-## Current Progress
+## Tamamlanan İşler (3 danışman görevi)
 
-- DB seçimi yapıldı: **MongoDB** (SQLite ve Atlas cloud elendi; kullanıcı local MongoDB istedi).
-- Henüz kod yazılmadı. Mevcut storage analiz edildi (aşağıda entegrasyon noktaları).
-- Bu handoff oluşturuldu.
+### 1. MongoDB persistence — TAMAM ✅  (commit `e54f4c8`)
+Analiz çıktıları artık MongoDB'de. JSON dosya tek başına kullanılmıyor.
+
+- **`backend/storage.py` (YENİ):** `CallStore` ABC + `MongoCallStore` + `JsonCallStore`.
+  `get_call_store()` factory: `PERSISTENCE_BACKEND=mongo` ise Mongo'ya 1.5s ping;
+  ulaşılamazsa otomatik `JsonCallStore`'a düşer (**graceful fallback** — Mongo kapalıyken
+  uygulama çökmez, `data/call_log.json`'a yazar). Metodlar: `add/list/get/update_notes/
+  delete/delete_all/count/latest`.
+- **`backend/main.py`:** eski `_CALL_LOG`/JSON global bloğu kaldırıldı → `store = get_call_store()`.
+  6 storage noktası (analyze, analyze-test, GET /calls, feedback, DELETE tek, DELETE hepsi) +
+  WS loop store metodlarına çevrildi.
+- **`backend/config.py`:** `PERSISTENCE_BACKEND`, `MONGODB_URI`, `MONGODB_DB`, `MONGODB_COLLECTION`.
+- **`backend/schemas.py` — CallRecord genişletildi:** `p_real, p_fake, spectral_residual,
+  model_backend, threshold` (hepsi Optional, eski kayıt uyumu). Tam skor seti DB'ye yazılıyor.
+- **`requirements.txt`:** `pymongo>=4.6` (4.17 kurulu).
+- Migration YOK (karar): Mongo boş başladı, eski JSON aktarılmadı.
+- DB adı: `deepfake_fraud`, koleksiyon: `calls`. `call_id` unique index.
+
+### 2. Analiz Geçmişi modal + ses oynatma — TAMAM ✅  (commit `e54f4c8`)
+- Ana ekrandaki inline "recent analyses" kaldırıldı → nav'da **"Geçmiş"** butonu + modal.
+  Modal DB'den (`/calls`) çeker: dosya adı, risk badge, fraud verdict, skor, zaman,
+  `<audio controls>` oynatıcı, tekil + toplu sil.
+- **Ses saklama:** upload/mic sesleri `data/audio/<call_id>.<ext>` diske yazılır
+  (`_store_audio_bytes`), `CallRecord.audio_path`+`audio_filename`'e kaydedilir.
+  test-library dosyaları yerinde referanslanır (kopya yok).
+- **`GET /calls/{id}/audio`** → `FileResponse` (path-traversal guard `_resolve_audio_path`,
+  sadece `data/audio` veya `test_audio` altı). Silince `data/audio` dosyası da silinir,
+  `test_audio` orijinaline dokunulmaz.
+- **`GET /test-library/audio?category=&filename=`** → test kütüphanesi dosyasını analiz etmeden
+  önizleme. Frontend Test Library modalında her dosyaya **play/pause** butonu eklendi.
+
+### 3. Sesli sonuç (TTS) — TAMAM ✅  (commit `1dbe01d`)
+- Analiz sonrası doğruluk yüzdesi **otomatik sesli okunur** (`window.speechSynthesis`,
+  sıfır backend). Result kartında **hoparlör butonu** ile tekrar.
+- Dil UI locale'e göre: TR sesi varsa Türkçe, yoksa İngilizce'ye düşer.
+  Metin: TR *"Doğruluk oranı yüzde X. Sahtecilik şüphesi var/yok."* / EN karşılığı.
+- `pickBestVoice`: Premium/Enhanced/Siri/Neural sesleri otomatik tercih, yoksa
+  Yelda/Samantha, yoksa ilk eşleşen.
+- Sadece frontend: `Dashboard.tsx`, `i18n.ts`, `styles.css`.
 
 ---
 
-## Mevcut Sistem — saklama bu an nasıl çalışıyor
+## Çalıştırma (mac, güncel)
 
-Şu an çıktılar JSON dosyada tutuluyor: `data/call_log.json`.
-
-- `backend/main.py:66` — `_CALL_LOG_FILE = .../data/call_log.json`
-- `backend/main.py:69` `_load_call_log()` — açılışta JSON oku → `list[CallRecord]`
-- `backend/main.py:79` `_save_call_log(log)` — tüm listeyi her seferinde JSON'a yeniden yaz
-- `backend/main.py:87` `_CALL_LOG: list[CallRecord]` — bellekte global liste
-
-**Sorun:** her analizde tüm dosya yeniden yazılıyor, eşzamanlılık güvenliği yok, sorgu yok.
-
-### Veri modeli (`backend/schemas.py`)
-
-`CallRecord` (saklanan kayıt):
-```python
-class CallRecord(BaseModel):
-    call_id: str
-    authenticity_score: float
-    is_suspected_fraud: bool
-    risk_level: RiskLevel = RiskLevel.MEDIUM   # low|medium|high|critical
-    timestamp: datetime
-    notes: Optional[str] = None
+### Tek komut (önerilen)
+```bash
+cd /Users/dogukanfiliz/Documents/Workspace/deepfake-voice-fraud-dedection
+bash run_mac.sh
 ```
-`PredictionResult` = API yanıtı (daha geniş: p_real, p_fake, spectral_residual, num_chunks, max_chunk_p_fake). NOT: şu an sadece `CallRecord` alanları saklanıyor; PredictionResult'taki ekstra skorlar (p_real/p_fake/spectral_residual) DB'ye yazılmıyor. Hoca için iyi geliştirme: bu skorları da sakla → schema genişlet.
+`run_mac.sh` artık: `.env` kontrol → venv+deps → **MongoDB başlat + ping bekle (15s)** →
+backend `:8010` (arka plan) → frontend Vite. Mongo başlamazsa uyarır + JSON fallback'e devam eder.
 
-### Değiştirilecek 5 storage noktası (hepsi backend/main.py)
-
-| Yer | Satır | İşlem |
-|---|---|---|
-| `/analyze` | ~196-197 | `_CALL_LOG.append(record)` + `_save_call_log` → DB insert |
-| `/analyze-test` | ~398-407 | aynı insert |
-| `GET /calls` | ~213-216 | son N kayıt (reversed, limit) → DB find sorted desc |
-| `POST /feedback` | ~219-243 | call_id ile bul, notes güncelle → DB update_one |
-| `DELETE /calls/{call_id}` | ~246-254 | tek sil → DB delete_one |
-| `DELETE /calls` | ~257+ | hepsini sil → DB delete_many |
-
----
-
-## What Worked
-
-- Mevcut `.env` config full_run_002 modeliyle çalışıyor (XLSR+AASIST head). Backend ayağa kalkıyor.
-- `.env` UTF-8 **NO BOM** olmalı (pydantic-settings BOM'da patlıyor). Yazarken:
-  `python -c "open('.env','w',encoding='utf-8',newline='\n').write(c)"`
-- config.py geçerli anahtar: `MODEL_BACKEND` (MODEL_NAME DEĞİL — eski .env'de MODEL_NAME vardı, crash etti).
-
-## What Didn't Work / Tuzaklar
-
-- `.env`-de `MODEL_NAME=...` → `ValidationError: model_name Extra inputs are not permitted`. Doğrusu `MODEL_BACKEND`.
-- `Out-File -Encoding UTF8` / `Set-Content -Encoding UTF8` → BOM ekler → pydantic crash.
-- Bash tool'da Windows path backslash bozuluyor; forward slash kullan (`.venv/Scripts/python.exe`).
-- `gh` ve bazen `python` json pipe Bash'te sorunlu; ToolSearch→WebFetch veya curl daha güvenilir.
-
----
-
-## MongoDB Implementation Plan (Next Steps)
-
-### 1. Kurulum (her iki makinede)
-- **Windows:** MongoDB Community Server MSI installer → Windows service olarak çalışır (otomatik başlar). Port 27017.
-- **MacBook:** `brew tap mongodb/brew && brew install mongodb-community && brew services start mongodb-community`. Port 27017.
-- Doğrula: `mongosh --eval "db.runCommand({ping:1})"`.
-
-### 2. Python driver
-- **pymongo** (sync) öner — endpoint'ler async ama düşük yükte sorun yok, en basit. (Alternatif: `motor` async, daha karmaşık.)
-- `pip install pymongo` → `requirements.txt`'e ekle.
-
-### 3. Config (`backend/config.py` + `.env` + `.env.example`)
-Yeni alanlar:
-```python
-MONGODB_URI: str = "mongodb://localhost:27017"
-MONGODB_DB: str = "deepfake_fraud"
-MONGODB_COLLECTION: str = "calls"
-PERSISTENCE_BACKEND: str = "mongo"   # "mongo" | "json"  (fallback switch)
+### Manuel
+```bash
+# MongoDB (brew service, login'de oto-başlar; gerekirse:)
+brew services start mongodb-community
+# backend
+.venv/bin/python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8010
+# frontend
+cd frontend && npm run dev
 ```
 
-### 4. Repository katmanı — `backend/storage.py` (YENİ dosya)
-- `CallStore` interface: `add(record)`, `list(limit)`, `update_notes(call_id, notes)`, `delete(call_id)`, `delete_all()`.
-- İki implementasyon: `MongoCallStore`, `JsonCallStore` (mevcut JSON mantığını taşı).
-- **GRACEFUL FALLBACK (kritik):** açılışta Mongo'ya ping at; bağlanamazsa otomatik `JsonCallStore`'a düş + uyarı logla. Böylece "Mongo açık değil" demo'yu çökertmez. "git sync sonrası çalışsın" hedefi için zorunlu.
-- `call_id` üzerine unique index oluştur.
+### Kayıtları görme
+- **Compass (GUI):** `open -a "MongoDB Compass"` → `mongodb://localhost:27017` → `deepfake_fraud` > `calls`.
+- **CLI:** `mongosh deepfake_fraud --eval "db.calls.find().pretty()"`
 
-### 5. main.py entegrasyonu
-- `_CALL_LOG` / `_load_call_log` / `_save_call_log` yerine `store = get_call_store()` kullan.
-- Yukarıdaki 5 storage noktasını store metodlarına çevir.
+### Demo notları
+- **Sesli okuma için Safari kullan** — Chrome bazı sürümlerde Enhanced sesleri
+  `getVoices()`'ta listelemez. Safari sistem Enhanced seslerini gösterir.
+- Enhanced sesler kurulu: Samantha (Enhanced) en_US, Yelda (Enhanced) tr_TR.
+  Yenisi gerekirse: System Settings → Accessibility → Spoken Content → System Voice → Manage Voices.
 
-### 6. Migration
-- İlk çalıştırmada `data/call_log.json` varsa içeriği Mongo'ya aktar (call_id ile upsert, idempotent). Bir kez çalış, sonra atla.
+---
 
-### 7. (Opsiyonel, hoca puanı) Schema genişlet
-- `CallRecord`'a `p_real`, `p_fake`, `spectral_residual`, `model_backend`, `threshold` ekle → DB'ye tam skor seti yaz. Dashboard'da gösterilebilir.
+## Ortam Kurulumu (yeni makinede)
+- **MongoDB:** `brew tap mongodb/brew && brew install mongodb-community mongosh && brew services start mongodb-community`
+- **Compass (opsiyonel GUI):** `brew install --cask mongodb-compass`
+- **Python deps:** `pip install -r requirements.txt` (pymongo dahil)
 
-### 8. Test / doğrulama
-- Backend başlat, bir analiz yap, `mongosh` ile `db.calls.find()` kayıt görünmeli.
-- Mongo'yu durdur → backend yine çalışmalı (JSON fallback).
-- `GET /calls`, `/feedback`, `DELETE` uçları MongoDB ile çalışmalı.
+---
+
+## Doğrulama (yapıldı, hepsi geçti)
+- Mongo yolu: analiz → `db.calls` kaydı + tam skor seti; /calls, /feedback, DELETE, 404.
+- Audio: upload → `data/audio/*.wav` + GET 200; test-library referans + GET 200; sil → dosya gider, 404.
+- Library preview endpoint: 200; bad category 400; path traversal 404.
+- Fallback: Mongo durdurulunca backend ayağa kalkar, JSON'a yazar.
+- Frontend `tsc`: Dashboard/i18n 0 yeni hata (baseline 1 pre-existing i18n as-const hatası).
 
 ---
 
 ## Sabit Kurallar (bu proje)
-- İzinsiz training YOK. İzinsiz backend/frontend mantık değişikliği YOK (bu görev onaylı feature).
-- `test_audio` + `microphone_benchmark` HOLDOUT.
-- `models/ssl_aasist/weights.pth` üzerine YAZMA.
-- full_run_002/003/004 artifact'larını SİLME.
+- İzinsiz training YOK. İzinsiz model/inference mantık değişikliği YOK.
+- `models/ssl_aasist/weights.pth` üzerine YAZMA. full_run_002/003/004 artifact'larını SİLME.
+- `test_audio` + `microphone_benchmark` HOLDOUT (test seti).
 - Commit'lerde co-author EKLEME.
+- `.env` UTF-8 NO BOM (pydantic BOM'da patlar). Geçerli anahtar `MODEL_BACKEND` (MODEL_NAME değil).
 
-## Aktif Model Config (referans)
-`.env` şu an (full_run_002):
+## Aktif Model Config (referans, .env)
 ```
 MODEL_BACKEND=ssl_aasist
-AUTH_THRESHOLD=0.49
+AUTH_THRESHOLD=0.50
 LOCAL_SSL_MODEL_DIR=models/ssl_aasist
-LOCAL_SSL_WEIGHTS_PATH=training_runs/full_run_002/best_head.pth
+LOCAL_SSL_WEIGHTS_PATH=training_runs/full_run_004/best_head.pth
 CALL_CHANNEL_MODE=false
 ```
-Benchmark: test_audio %100, FoR-original %83.2, FoR-rerecorded %55.5.
 
 ## Git
 - origin: `https://github.com/dogukan-filiz/deepfake-voice-fraud-dedection.git`
-- HEAD: `22d939e` (colleague: dashboard progress bar). Push GCM gerektirir.
-- Push öncesi her zaman `git fetch` + ahead/behind kontrol. Local commit yoksa `git pull --ff-only` güvenli.
-
----
-
-## Fresh start için
-Yeni session'da bu dosyayı ver: `docs/HANDOFF.md`
+- `main` HEAD: `1dbe01d`. 3 feature merge edildi (e54f4c8 persistence+history, 1dbe01d TTS).
+- Push öncesi `git fetch` + ahead/behind kontrol.
