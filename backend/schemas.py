@@ -50,3 +50,14 @@ class CallRecord(BaseModel):
     risk_level: RiskLevel = RiskLevel.MEDIUM
     timestamp: datetime
     notes: Optional[str] = None
+    # Full score set persisted alongside the verdict. Optional/default None so
+    # legacy JSON records and existing tests stay valid.
+    p_real: Optional[float] = None
+    p_fake: Optional[float] = None
+    spectral_residual: Optional[float] = None
+    model_backend: Optional[str] = None
+    threshold: Optional[float] = None
+    # Stored audio for playback. audio_path is relative to the repo root;
+    # audio_filename is the display name (uploaded/test file name).
+    audio_path: Optional[str] = None
+    audio_filename: Optional[str] = None

@@ -46,6 +46,29 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   echo "   note: system ffmpeg not found. WAV uploads work; for MP3 run: brew install ffmpeg"
 fi
 
+# --- 4b. MongoDB (persistence backend; falls back to JSON if it won't start) ---
+if command -v mongosh >/dev/null 2>&1; then
+  if ! mongosh --quiet --eval "db.runCommand({ping:1})" >/dev/null 2>&1; then
+    echo "==> starting MongoDB service"
+    brew services start mongodb-community >/dev/null 2>&1 || true
+    # wait up to 15s for the server to accept connections
+    for i in $(seq 1 15); do
+      if mongosh --quiet --eval "db.runCommand({ping:1})" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+  fi
+  if mongosh --quiet --eval "db.runCommand({ping:1})" >/dev/null 2>&1; then
+    echo "==> MongoDB up (records persist to deepfake_fraud.calls)"
+  else
+    echo "   note: MongoDB not reachable; backend will fall back to data/call_log.json"
+  fi
+else
+  echo "   note: mongosh not found; install with 'brew install mongodb-community mongosh'."
+  echo "         backend will fall back to data/call_log.json until MongoDB is up."
+fi
+
 # --- 5. start backend (background) ---
 echo "==> starting backend on http://127.0.0.1:8010"
 mkdir -p .tmp

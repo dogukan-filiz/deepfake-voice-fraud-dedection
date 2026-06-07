@@ -18,6 +18,7 @@ try:
     from backend.config import settings
     from backend.call_channel import normalize_audio as _normalize_audio
     from backend.preprocess import preprocess_waveform as _preprocess_waveform
+    from backend.storage import get_call_store
     _UVICORN_APP_PATH = "backend.main:app"
 except ModuleNotFoundError:
     from audio_processing import (
@@ -30,6 +31,7 @@ except ModuleNotFoundError:
     from config import settings
     from call_channel import normalize_audio as _normalize_audio
     from preprocess import preprocess_waveform as _preprocess_waveform
+    from storage import get_call_store
     _UVICORN_APP_PATH = "main:app"
 
 
@@ -60,33 +62,51 @@ app.add_middleware(
 )
 
 
-from pathlib import Path as _PathTop
-import json as _json
-
-_CALL_LOG_FILE = _PathTop(__file__).resolve().parents[1] / "data" / "call_log.json"
-
-
-def _load_call_log() -> list[CallRecord]:
-    if _CALL_LOG_FILE.is_file():
-        try:
-            raw = _json.loads(_CALL_LOG_FILE.read_text(encoding="utf-8"))
-            return [CallRecord(**r) for r in raw]
-        except Exception:
-            return []
-    return []
-
-
-def _save_call_log(log: list[CallRecord]) -> None:
-    _CALL_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _CALL_LOG_FILE.write_text(
-        _json.dumps([r.model_dump(mode="json") for r in log], indent=2),
-        encoding="utf-8",
-    )
-
-
-_CALL_LOG: list[CallRecord] = _load_call_log()
+store = get_call_store()
 
 THRESHOLD = settings.AUTH_THRESHOLD
+
+from pathlib import Path as _Path
+from fastapi.responses import FileResponse
+
+_REPO_ROOT = _Path(__file__).resolve().parents[1]
+_AUDIO_DIR = _REPO_ROOT / "data" / "audio"
+_TEST_AUDIO_DIR = _REPO_ROOT / "test_audio"
+
+# Containers we can persist + serve for later playback (browser-playable).
+_AUDIO_MEDIA_TYPES = {
+    "wav": "audio/wav",
+    "flac": "audio/flac",
+    "ogg": "audio/ogg",
+    "mp3": "audio/mpeg",
+    "webm": "audio/webm",
+    "mp4": "audio/mp4",
+}
+
+
+def _store_audio_bytes(call_id: str, container: str, raw_bytes: bytes) -> str:
+    """Persist uploaded/recorded audio for later playback.
+
+    Returns the stored path relative to the repo root.
+    """
+    ext = container if container in _AUDIO_MEDIA_TYPES else "bin"
+    _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _AUDIO_DIR / f"{call_id}.{ext}"
+    dest.write_bytes(raw_bytes)
+    return str(dest.relative_to(_REPO_ROOT))
+
+
+def _resolve_audio_path(rel_path: str) -> _Path | None:
+    """Resolve a stored audio path, only if it lives under an allowed dir."""
+    candidate = (_REPO_ROOT / rel_path).resolve()
+    for allowed in (_AUDIO_DIR.resolve(), _TEST_AUDIO_DIR.resolve()):
+        try:
+            candidate.relative_to(allowed)
+        except ValueError:
+            continue
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _sniff_audio_container(raw_bytes: bytes) -> str:
@@ -186,15 +206,24 @@ async def analyze_call(file: UploadFile = File(...)):
     call_id = f"call-{datetime.now(timezone.utc).timestamp()}"
     now = datetime.now(timezone.utc)
 
+    audio_path = _store_audio_bytes(call_id, container, raw_bytes)
+    audio_filename = file.filename or f"{call_id}.{container}"
+
     record = CallRecord(
         call_id=call_id,
         authenticity_score=authenticity_score,
         is_suspected_fraud=is_suspected_fraud,
         risk_level=risk,
         timestamp=now,
+        p_real=float(p_real),
+        p_fake=float(p_fake),
+        spectral_residual=float(spectral_resid),
+        model_backend=get_model_status().get("model_type"),
+        threshold=THRESHOLD,
+        audio_path=audio_path,
+        audio_filename=audio_filename,
     )
-    _CALL_LOG.append(record)
-    _save_call_log(_CALL_LOG)
+    store.add(record)
 
     return PredictionResult(
         call_id=call_id,
@@ -213,52 +242,74 @@ async def analyze_call(file: UploadFile = File(...)):
 @app.get("/calls", response_model=List[CallRecord])
 async def list_calls(limit: int = 50):
     """List recent call analysis records for the dashboard."""
-    return list(reversed(_CALL_LOG))[:limit]
+    return store.list(limit)
+
+
+@app.get("/calls/{call_id}/audio")
+async def get_call_audio(call_id: str):
+    """Stream the stored audio for a call so it can be replayed in the UI."""
+    record = store.get(call_id)
+    if record is None or not record.audio_path:
+        raise HTTPException(status_code=404, detail="Audio not found")
+
+    resolved = _resolve_audio_path(record.audio_path)
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="Audio file missing")
+
+    ext = resolved.suffix.lstrip(".").lower()
+    media_type = _AUDIO_MEDIA_TYPES.get(ext, "application/octet-stream")
+    return FileResponse(
+        resolved,
+        media_type=media_type,
+        filename=record.audio_filename or resolved.name,
+    )
 
 
 @app.post("/feedback")
 async def add_feedback(feedback: FeedbackRequest):
     """Accept analyst feedback on a previous call analysis."""
-    for idx, record in enumerate(_CALL_LOG):
-        if record.call_id == feedback.call_id:
-            note_parts = []
-            if feedback.is_false_positive:
-                note_parts.append("false_positive")
-            if feedback.is_confirmed_fraud:
-                note_parts.append("confirmed_fraud")
-            if feedback.description:
-                note_parts.append(feedback.description)
+    note_parts = []
+    if feedback.is_false_positive:
+        note_parts.append("false_positive")
+    if feedback.is_confirmed_fraud:
+        note_parts.append("confirmed_fraud")
+    if feedback.description:
+        note_parts.append(feedback.description)
 
-            _CALL_LOG[idx] = CallRecord(
-                call_id=record.call_id,
-                authenticity_score=record.authenticity_score,
-                is_suspected_fraud=record.is_suspected_fraud,
-                risk_level=record.risk_level,
-                timestamp=record.timestamp,
-                notes="; ".join(note_parts) if note_parts else record.notes,
-            )
-            _save_call_log(_CALL_LOG)
-            break
+    if note_parts:
+        store.update_notes(feedback.call_id, "; ".join(note_parts))
 
     return {"status": "ok"}
 
 
+def _delete_stored_audio(record: CallRecord | None) -> None:
+    """Remove a record's saved audio, but never touch test-library originals."""
+    if record is None or not record.audio_path:
+        return
+    candidate = (_REPO_ROOT / record.audio_path).resolve()
+    try:
+        candidate.relative_to(_AUDIO_DIR.resolve())
+    except ValueError:
+        return  # not under data/audio (e.g. test_audio) -> leave it
+    candidate.unlink(missing_ok=True)
+
+
 @app.delete("/calls/{call_id}")
 async def delete_call(call_id: str):
-    """Delete a single call record."""
-    for idx, record in enumerate(_CALL_LOG):
-        if record.call_id == call_id:
-            _CALL_LOG.pop(idx)
-            _save_call_log(_CALL_LOG)
-            return {"status": "ok"}
+    """Delete a single call record (and its saved audio, if any)."""
+    record = store.get(call_id)
+    if store.delete(call_id):
+        _delete_stored_audio(record)
+        return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Call not found")
 
 
 @app.delete("/calls")
 async def delete_all_calls():
-    """Delete all call records."""
-    _CALL_LOG.clear()
-    _save_call_log(_CALL_LOG)
+    """Delete all call records and their saved audio files."""
+    for record in store.list(10_000):
+        _delete_stored_audio(record)
+    store.delete_all()
     return {"status": "ok"}
 
 
@@ -269,10 +320,11 @@ async def websocket_live(websocket: WebSocket):
     try:
         last_len = 0
         while True:
-            if len(_CALL_LOG) != last_len:
-                last_len = len(_CALL_LOG)
-                if _CALL_LOG:
-                    latest = _CALL_LOG[-1]
+            current_len = store.count()
+            if current_len != last_len:
+                last_len = current_len
+                latest = store.latest()
+                if latest is not None:
                     await websocket.send_json(latest.model_dump(mode="json"))
             await websocket.receive_text()
     except WebSocketDisconnect:
@@ -345,6 +397,23 @@ async def list_test_library():
     return result
 
 
+@app.get("/test-library/audio")
+async def get_test_library_audio(category: str, filename: str):
+    """Stream a test-library file for preview playback (no analysis)."""
+    if category not in ("real", "fake"):
+        raise HTTPException(status_code=400, detail="Category must be 'real' or 'fake'")
+
+    safe_name = _Path(filename).name
+    filepath = _test_audio_root() / category / safe_name
+    resolved = _resolve_audio_path(str(filepath.resolve().relative_to(_REPO_ROOT))) if filepath.is_file() else None
+    if resolved is None:
+        raise HTTPException(status_code=404, detail=f"File not found: {category}/{safe_name}")
+
+    ext = resolved.suffix.lstrip(".").lower()
+    media_type = _AUDIO_MEDIA_TYPES.get(ext, "application/octet-stream")
+    return FileResponse(resolved, media_type=media_type, filename=safe_name)
+
+
 @app.post("/analyze-test", response_model=PredictionResult)
 async def analyze_test_file(category: str, filename: str):
     """Analyze a file from the test library."""
@@ -395,15 +464,24 @@ async def analyze_test_file(category: str, filename: str):
     call_id = f"test-{category}-{safe_name}-{datetime.now(timezone.utc).timestamp()}"
     now = datetime.now(timezone.utc)
 
+    # Reference the existing test-library file in place (no copy needed).
+    audio_path = str(filepath.resolve().relative_to(_REPO_ROOT))
+
     record = CallRecord(
         call_id=call_id,
         authenticity_score=authenticity_score,
         is_suspected_fraud=is_suspected_fraud,
         risk_level=risk,
         timestamp=now,
+        p_real=float(p_real),
+        p_fake=float(p_fake),
+        spectral_residual=float(spectral_resid),
+        model_backend=get_model_status().get("model_type"),
+        threshold=THRESHOLD,
+        audio_path=audio_path,
+        audio_filename=safe_name,
     )
-    _CALL_LOG.append(record)
-    _save_call_log(_CALL_LOG)
+    store.add(record)
 
     return PredictionResult(
         call_id=call_id,

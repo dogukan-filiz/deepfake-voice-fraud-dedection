@@ -745,6 +745,28 @@ body {
   white-space: nowrap;
 }
 
+.library-file-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.library-file-row .library-file { flex: 1; }
+
+.library-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.library-play:hover { background: var(--input-bg); border-color: var(--accent-blue); }
+
 .spin { animation: spinAnim 0.8s linear infinite; }
 
 @keyframes spinAnim { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -783,4 +805,20 @@ body {
   .dashboard { padding: 0 1rem 1.5rem; }
   .verdict-banner { flex-wrap: wrap; padding: 1rem; gap: 1rem; }
   .verdict-score { border-left: none; border-top: 1px solid rgba(0,0,0,0.08); padding: 0.5rem 0 0; }
+}
+
+/* Analysis History modal */
+.history-list { display: flex; flex-direction: column; }
+.history-item { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+.history-item:last-child { border-bottom: none; }
+.history-main { display: flex; align-items: center; gap: 0.75rem; }
+.history-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); word-break: break-all; }
+.history-time { color: var(--text-muted); font-weight: 400; }
+.history-audio { width: 100%; height: 34px; margin-top: 0.6rem; }
+.history-noaudio {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
 }

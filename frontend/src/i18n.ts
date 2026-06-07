@@ -49,6 +49,11 @@ const translations = {
       deleteAll: 'Clear all',
       confirmDeleteAll: 'Clear all analyses?',
     },
+    history: {
+      openBtn: 'History',
+      title: 'Analysis History',
+      noAudio: 'Audio unavailable',
+    },
     result: {
       title: 'Latest Analysis',
       authenticity: 'Authenticity',
@@ -135,6 +140,11 @@ const translations = {
       scorePrefix: 'Skor: ',
       deleteAll: 'Tümünü temizle',
       confirmDeleteAll: 'Tüm analizler silinsin mi?',
+    },
+    history: {
+      openBtn: 'Geçmiş',
+      title: 'Analiz Geçmişi',
+      noAudio: 'Ses yok',
     },
     result: {
       title: 'Son Analiz Sonucu',

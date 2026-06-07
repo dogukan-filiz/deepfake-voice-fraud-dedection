@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 import {
   BarChart3, Check, X, AlertTriangle, HelpCircle,
   Upload, Calendar, Mic, Square, ShieldCheck, ShieldAlert, ShieldX, Globe,
-  FlaskConical, FileAudio, Loader2, Trash2,
+  FlaskConical, FileAudio, Loader2, Trash2, History, Play, Pause,
 } from 'lucide-react';
 import { type Locale, type Translations, getTranslations, detectLocale, persistLocale } from '../i18n';
 
@@ -26,6 +26,10 @@ interface CallRecord {
   risk_level: RiskLevel;
   timestamp: string;
   notes?: string | null;
+  p_fake?: number | null;
+  model_backend?: string | null;
+  audio_path?: string | null;
+  audio_filename?: string | null;
 }
 
 interface PredictionResult {
@@ -80,7 +84,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [showAllCalls, setShowAllCalls] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'processing'>('idle');
   const [recordingElapsed, setRecordingElapsed] = useState(0);
@@ -316,7 +320,6 @@ export const Dashboard: React.FC = () => {
 
   const miniBars = [...calls].reverse().slice(0, 30).map(c => ({ id: c.call_id, level: c.risk_level, score: c.authenticity_score }));
 
-  const visibleCalls = showAllCalls ? calls : calls.slice(0, 6);
 
   const riskLabel = (level: RiskLevel) => t.risk[level];
 
@@ -334,6 +337,34 @@ export const Dashboard: React.FC = () => {
       setLibraryFiles({ real: [], fake: [] });
     }
   };
+
+  // Preview playback for test-library files (no analysis).
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
+
+  const toggleLibraryPlay = (category: 'real' | 'fake', filename: string) => {
+    const key = `${category}/${filename}`;
+    if (playingKey === key) {
+      previewAudioRef.current?.pause();
+      return;
+    }
+    previewAudioRef.current?.pause();
+    const url = `/api/test-library/audio?category=${category}&filename=${encodeURIComponent(filename)}`;
+    const audio = new Audio(url);
+    previewAudioRef.current = audio;
+    audio.onended = () => setPlayingKey(null);
+    audio.onpause = () => setPlayingKey(prev => (prev === key ? null : prev));
+    audio.play().then(() => setPlayingKey(key)).catch(() => setPlayingKey(null));
+  };
+
+  // Stop any preview when the library modal closes.
+  useEffect(() => {
+    if (!showLibrary) {
+      previewAudioRef.current?.pause();
+      previewAudioRef.current = null;
+      setPlayingKey(null);
+    }
+  }, [showLibrary]);
 
   const analyzeTestFile = async (category: 'real' | 'fake', filename: string) => {
     const key = `${category}/${filename}`;
@@ -383,6 +414,10 @@ export const Dashboard: React.FC = () => {
           <span className="brand-name">{t.brand}</span>
         </div>
         <div className="nav-right">
+          <button className="lang-toggle" onClick={() => setShowHistory(true)}>
+            <History size={14} />
+            {t.history.openBtn}
+          </button>
           <button className="lang-toggle" onClick={openLibrary}>
             <FlaskConical size={14} />
             {t.testLibrary.openBtn}
@@ -551,50 +586,8 @@ export const Dashboard: React.FC = () => {
           </section>
         </div>
 
-        {/* Bottom Row: Recent Analyses + Latest Result side by side */}
+        {/* Bottom Row: Latest Result (full analysis history lives in the History modal) */}
         <div className="bottom-row">
-          <section className="card card-recent">
-            <div className="card-header">
-              <h3>{t.recent.title}</h3>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                {calls.length > 0 && (
-                  <button className="link-btn danger-link" onClick={deleteAllCalls}>
-                    <Trash2 size={12} /> {t.recent.deleteAll}
-                  </button>
-                )}
-                {calls.length > 6 && (
-                  <button className="link-btn" onClick={() => setShowAllCalls(prev => !prev)}>
-                    {showAllCalls ? t.recent.collapse : t.recent.seeAll}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="analyses-list">
-              {calls.length === 0 && (
-                <div className="empty-list">{t.recent.empty}</div>
-              )}
-              {visibleCalls.map(c => {
-                const shortId = c.call_id.split('-').pop()?.slice(0, 8) ?? '';
-                return (
-                  <div className="analysis-item" key={c.call_id}>
-                    <div className={`item-icon ${c.risk_level}`}><RiskIcon level={c.risk_level} /></div>
-                    <div className="item-info">
-                      <div className="item-title">
-                        <span>{t.recent.callPrefix}{shortId}</span>
-                        <span className={`badge ${c.risk_level}`}>{riskLabel(c.risk_level)}</span>
-                      </div>
-                      <span className="item-score">{t.recent.scorePrefix}{c.authenticity_score.toFixed(3)}</span>
-                    </div>
-                    <div className="item-meta">
-                      <span className="item-time">{timeAgo(c.timestamp, locale)}</span>
-                      <button className="item-delete" onClick={() => deleteCall(c.call_id)}><Trash2 size={13} /></button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
           {result && (
             <section className="card card-result">
               <div className="card-header">
@@ -637,16 +630,24 @@ export const Dashboard: React.FC = () => {
                     </h3>
                     <div className="library-files">
                       {libraryFiles.real.map(f => (
-                        <button
-                          key={f}
-                          className="library-file"
-                          disabled={libraryLoading !== null}
-                          onClick={() => analyzeTestFile('real', f)}
-                        >
-                          <FileAudio size={14} />
-                          <span className="library-file-name">{f}</span>
-                          {libraryLoading === `real/${f}` && <Loader2 size={14} className="spin" />}
-                        </button>
+                        <div className="library-file-row" key={f}>
+                          <button
+                            className="library-file"
+                            disabled={libraryLoading !== null}
+                            onClick={() => analyzeTestFile('real', f)}
+                          >
+                            <FileAudio size={14} />
+                            <span className="library-file-name">{f}</span>
+                            {libraryLoading === `real/${f}` && <Loader2 size={14} className="spin" />}
+                          </button>
+                          <button
+                            className="library-play"
+                            onClick={() => toggleLibraryPlay('real', f)}
+                            aria-label={playingKey === `real/${f}` ? 'Pause' : 'Play'}
+                          >
+                            {playingKey === `real/${f}` ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -656,19 +657,81 @@ export const Dashboard: React.FC = () => {
                     </h3>
                     <div className="library-files">
                       {libraryFiles.fake.map(f => (
-                        <button
-                          key={f}
-                          className="library-file"
-                          disabled={libraryLoading !== null}
-                          onClick={() => analyzeTestFile('fake', f)}
-                        >
-                          <FileAudio size={14} />
-                          <span className="library-file-name">{f}</span>
-                          {libraryLoading === `fake/${f}` && <Loader2 size={14} className="spin" />}
-                        </button>
+                        <div className="library-file-row" key={f}>
+                          <button
+                            className="library-file"
+                            disabled={libraryLoading !== null}
+                            onClick={() => analyzeTestFile('fake', f)}
+                          >
+                            <FileAudio size={14} />
+                            <span className="library-file-name">{f}</span>
+                            {libraryLoading === `fake/${f}` && <Loader2 size={14} className="spin" />}
+                          </button>
+                          <button
+                            className="library-play"
+                            onClick={() => toggleLibraryPlay('fake', f)}
+                            aria-label={playingKey === `fake/${f}` ? 'Pause' : 'Play'}
+                          >
+                            {playingKey === `fake/${f}` ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analysis History Modal */}
+      {showHistory && (
+        <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t.history.title}</h2>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                {calls.length > 0 && (
+                  <button className="link-btn danger-link" onClick={deleteAllCalls}>
+                    <Trash2 size={12} /> {t.recent.deleteAll}
+                  </button>
+                )}
+                <button className="modal-close" onClick={() => setShowHistory(false)}><X size={18} /></button>
+              </div>
+            </div>
+            <div className="modal-body">
+              {calls.length === 0 ? (
+                <div className="empty-list">{t.recent.empty}</div>
+              ) : (
+                <div className="history-list">
+                  {calls.map(c => {
+                    const shortId = c.call_id.split('-').pop()?.slice(0, 8) ?? '';
+                    return (
+                      <div className="history-item" key={c.call_id}>
+                        <div className="history-main">
+                          <div className={`item-icon ${c.risk_level}`}><RiskIcon level={c.risk_level} /></div>
+                          <div className="item-info">
+                            <div className="item-title">
+                              <span className="history-name">{c.audio_filename ?? `${t.recent.callPrefix}${shortId}`}</span>
+                              <span className={`badge ${c.risk_level}`}>{riskLabel(c.risk_level)}</span>
+                              {c.is_suspected_fraud
+                                ? <span className="badge critical"><ShieldX size={11} /> {t.result.suspectedDeepfake}</span>
+                                : <span className="badge low"><ShieldCheck size={11} /> {t.result.appearsGenuine}</span>}
+                            </div>
+                            <span className="item-score">
+                              {t.recent.scorePrefix}{c.authenticity_score.toFixed(3)}
+                              <span className="history-time"> · {timeAgo(c.timestamp, locale)}</span>
+                            </span>
+                          </div>
+                          <button className="item-delete" onClick={() => deleteCall(c.call_id)}><Trash2 size={14} /></button>
+                        </div>
+                        {c.audio_path
+                          ? <audio className="history-audio" controls preload="none" src={`/api/calls/${encodeURIComponent(c.call_id)}/audio`} />
+                          : <span className="history-noaudio">{t.history.noAudio}</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

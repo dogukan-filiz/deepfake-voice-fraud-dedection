@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     CALL_CHANNEL_MODE: bool = False
     CALL_PROFILE: str = "narrowband_g711"   # narrowband_g711 | wideband_opus | bypass
 
+    # Persistence for analysis outputs (call records).
+    #   mongo - store in MongoDB; falls back to JSON automatically if unreachable
+    #   json  - store in data/call_log.json (legacy file-based)
+    PERSISTENCE_BACKEND: str = "mongo"
+    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_DB: str = "deepfake_fraud"
+    MONGODB_COLLECTION: str = "calls"
+
     class Config:
         env_file = ".env"
 
