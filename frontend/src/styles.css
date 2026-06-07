@@ -767,6 +767,21 @@ body {
 }
 .library-play:hover { background: var(--input-bg); border-color: var(--accent-blue); }
 
+.speak-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.speak-btn:hover { background: var(--input-bg); border-color: var(--accent-blue); }
+
 .spin { animation: spinAnim 0.8s linear infinite; }
 
 @keyframes spinAnim { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

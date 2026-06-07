@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 import {
   BarChart3, Check, X, AlertTriangle, HelpCircle,
   Upload, Calendar, Mic, Square, ShieldCheck, ShieldAlert, ShieldX, Globe,
-  FlaskConical, FileAudio, Loader2, Trash2, History, Play, Pause,
+  FlaskConical, FileAudio, Loader2, Trash2, History, Play, Pause, Volume2,
 } from 'lucide-react';
 import { type Locale, type Translations, getTranslations, detectLocale, persistLocale } from '../i18n';
 
@@ -366,6 +366,66 @@ export const Dashboard: React.FC = () => {
     }
   }, [showLibrary]);
 
+  // --- Spoken result (Web Speech API) ---
+  const lastSpokenRef = useRef<string | null>(null);
+
+  // Voice list is populated asynchronously in some browsers; warm it up.
+  useEffect(() => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.getVoices();
+    synth.onvoiceschanged = () => synth.getVoices();
+  }, []);
+
+  // Pick the most natural available voice for a language: prefer
+  // Premium/Enhanced/Siri/Neural variants, then a known-good default
+  // (e.g. Samantha/Yelda), then any voice matching the language.
+  const pickBestVoice = (
+    voices: SpeechSynthesisVoice[],
+    langPrefix: string,
+    preferred: string[],
+  ): SpeechSynthesisVoice | null => {
+    const matches = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+    if (matches.length === 0) return null;
+    const premium = matches.find(v => /premium|enhanced|siri|neural/i.test(v.name));
+    if (premium) return premium;
+    for (const name of preferred) {
+      const m = matches.find(v => v.name === name || v.name.startsWith(name));
+      if (m) return m;
+    }
+    return matches[0];
+  };
+
+  const speakResult = (r: PredictionResult) => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const voices = synth.getVoices();
+    const trVoice = pickBestVoice(voices, 'tr', ['Yelda']);
+    // Prefer Turkish only when the app is in TR and a Turkish voice exists,
+    // otherwise fall back to English text + voice.
+    const useTr = locale === 'tr' && !!trVoice;
+    const pct = Math.round(r.authenticity_score * 100);
+    const text = (useTr ? getTranslations('tr') : getTranslations('en'))
+      .result.speak(pct, r.is_suspected_fraud);
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = useTr ? 'tr-TR' : 'en-US';
+    const voice = useTr ? trVoice : pickBestVoice(voices, 'en', ['Samantha']);
+    if (voice) u.voice = voice;
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    synth.speak(u);
+  };
+
+  // Auto-speak each new analysis result once.
+  useEffect(() => {
+    if (result && result.call_id !== lastSpokenRef.current) {
+      lastSpokenRef.current = result.call_id;
+      speakResult(result);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
   const analyzeTestFile = async (category: 'real' | 'fake', filename: string) => {
     const key = `${category}/${filename}`;
     setLibraryLoading(key);
@@ -592,7 +652,17 @@ export const Dashboard: React.FC = () => {
             <section className="card card-result">
               <div className="card-header">
                 <h3>{t.result.title}</h3>
-                <span className="stat-date">{new Date(result.timestamp).toLocaleTimeString()}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <button
+                    className="speak-btn"
+                    onClick={() => speakResult(result)}
+                    title={t.result.replay}
+                    aria-label={t.result.replay}
+                  >
+                    <Volume2 size={15} />
+                  </button>
+                  <span className="stat-date">{new Date(result.timestamp).toLocaleTimeString()}</span>
+                </div>
               </div>
               <div>
                 <div className="result-row"><span className="result-label">{t.result.authenticity}</span><span className="result-value">{(result.authenticity_score * 100).toFixed(1)}%</span></div>

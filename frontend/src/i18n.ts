@@ -66,6 +66,9 @@ const translations = {
       verdictBannerFraud: 'This voice shows signs of synthetic generation',
       verdictBannerGenuine: 'No synthetic artifacts detected in this voice',
       confidence: 'Confidence',
+      speak: (pct: number, fraud: boolean) =>
+        `Authenticity ${pct} percent. ${fraud ? 'Suspected fraud.' : 'Voice appears genuine.'}`,
+      replay: 'Read result aloud',
     },
     risk: {
       low: 'Clean',
@@ -158,6 +161,9 @@ const translations = {
       verdictBannerFraud: 'Bu ses kaydında yapay üretim belirtileri tespit edildi',
       verdictBannerGenuine: 'Bu ses kaydında yapay üretim belirtisi bulunamadı',
       confidence: 'Güven',
+      speak: (pct: number, fraud: boolean) =>
+        `Doğruluk oranı yüzde ${pct}. ${fraud ? 'Sahtecilik şüphesi var.' : 'Ses gerçek görünüyor.'}`,
+      replay: 'Sonucu sesli oku',
     },
     risk: {
       low: 'Temiz',
